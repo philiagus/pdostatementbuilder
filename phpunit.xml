@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ This file is part of philiagus/pdostatementbuilder
+  ~
+  ~ (c) Andreas Bittner <philiagus@philiagus.de>
+  ~
+  ~ For the full copyright and license information, please view the LICENSE
+  ~ file that was distributed with this source code.
+  -->
+
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         colors="true"
+         bootstrap="vendor/autoload.php"
+         cacheResult="false"
+>
+    <filter>
+        <whitelist>
+            <directory>./src</directory>
+        </whitelist>
+    </filter>
+
+    <testsuites>
+        <testsuite name="PDOStatementBuilder Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

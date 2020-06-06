@@ -56,8 +56,8 @@ class SomeRepository
             return [];
         }
 
-        $builder = new \Philiagus\PDOStatementBuilder\PDOStatementBuilder();
-        $sql = $builder->prepare("
+        $builder = new \Philiagus\PDOStatementBuilder\Builder();
+        $sql = $builder->build("
             SELECT *
             FROM table
             WHERE id IN ({$builder->in($ids)})

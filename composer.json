@@ -1,0 +1,39 @@
+{
+    "name": "philiagus/pdostatementbuilder",
+    "description": "PHP classes to easily build PDO statements",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "php",
+        "parse",
+        "sanitize"
+    ],
+    "authors": [
+        {
+            "name": "Andreas Bittner",
+            "email": "philiagus@philiagus.de",
+            "role": "lead"
+        }
+    ],
+    "require": {
+        "php": ">=7.2",
+        "ext-pdo": "*"
+    },
+    "support": {
+        "issues": "https://github.com/philiagus/pdostatementbuilder/issues"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "*",
+        "ext-xdebug": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Philiagus\\PDOStatementBuilder\\": "src/Philiagus/PDOStatementBuilder"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Philiagus\\PDOStatementBuilder\\Test\\": "tests/Philiagus/PDOStatementBuilder/Test"
+        }
+    }
+}
