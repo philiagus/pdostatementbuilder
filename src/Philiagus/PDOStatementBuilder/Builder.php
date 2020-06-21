@@ -61,6 +61,13 @@ class Builder
     private $tokenStack = null;
 
     /**
+     * Make sure that no child class will ever take any arguments for construction
+     */
+    final public function __construct()
+    {
+    }
+
+    /**
      * A simple way of constructing a statement that doesn't needs specific tokens
      * The statement should contain the statement as it would be provided to the prepare
      * method of a \PDO object. The parameters are an array with the key being the name of the parameter in
