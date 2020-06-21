@@ -39,10 +39,10 @@ abstract class SuccessUnit extends Unit
             foreach ($matches[0] as $index => $fullPlaceholder) {
                 $type = $matches['type'][$index];
                 $value = $matches['value'][$index];
-                $trueValue = eval("return $value;");
+                $trueValue = json_decode($value);
                 $regexExpectedStatement = preg_replace(
                     '/' . preg_quote(preg_quote($fullPlaceholder)) . '/',
-                    '(:p\d+_[0-9a-f]+_\d+p)',
+                    '(:\w+)',
                     $regexExpectedStatement,
                     1,
                     $count

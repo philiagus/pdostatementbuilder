@@ -60,6 +60,87 @@ class Builder
      */
     private $tokenStack = null;
 
+    /**
+     * A simple way of constructing a statement that doesn't needs specific tokens
+     * The statement should contain the statement as it would be provided to the prepare
+     * method of a \PDO object. The parameters are an array with the key being the name of the parameter in
+     * the query.
+     *
+     * An example statement would be: "SELECT * FROM `table` WHERE id = :id" with the parameters
+     * [":id" => 123]
+     *
+     * @param string $statement
+     * @param mixed[] $parameters
+     *
+     * @return Statement
+     */
+    public static function simple(string $statement, array $parameters = []): Statement
+    {
+        if (empty($parameters)) {
+            return new Statement($statement);
+        }
+
+        $builder = new static();
+        $statementParameters = [];
+        foreach ($parameters as $name => $value) {
+            $type = null;
+            $value = $builder->transformValue($value, $type);
+
+            if ($type === null) {
+                $type = $builder->detectType($value);
+            } elseif (!is_int($type)) {
+                throw new \LogicException(
+                    'transformValue transformed type to be neither null nor integer'
+                );
+            }
+
+            $statementParameters[] = new Parameter(
+                $name,
+                $value,
+                $type
+            );
+        }
+
+        return new Statement($statement, $statementParameters);
+    }
+
+    /**
+     * @param mixed $value
+     * @param int|null $type
+     *
+     * @return mixed
+     */
+    protected function transformValue($value, ?int &$type)
+    {
+        if ($value instanceof PDOStatementBuilderParameter) {
+            return $value->toPDOStatementValue($type);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return int
+     */
+    protected function detectType($value): int
+    {
+        switch (gettype($value)) {
+            case 'string':
+            case 'double':
+                return \PDO::PARAM_STR;
+            case 'integer':
+                return \PDO::PARAM_INT;
+            case 'NULL':
+                return \PDO::PARAM_NULL;
+            case 'boolean':
+                return \PDO::PARAM_BOOL;
+            default:
+                throw new \InvalidArgumentException('Type of provided ' . gettype($value) . ' argument could not be inferred');
+        }
+    }
+
     final public function build(string $statement): Statement
     {
         if ($this->used) {
@@ -296,43 +377,6 @@ class Builder
         }
 
         return $this->unique . '_' . $this->uniqueIndex++;
-    }
-
-    /**
-     * @param mixed $value
-     * @param int|null $type
-     *
-     * @return mixed
-     */
-    protected function transformValue($value, ?int &$type)
-    {
-        if ($value instanceof PDOStatementBuilderParameter) {
-            return $value->toPDOStatementValue($type);
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return int
-     */
-    protected function detectType($value): int
-    {
-        switch (gettype($value)) {
-            case 'string':
-            case 'double':
-                return \PDO::PARAM_STR;
-            case 'integer':
-                return \PDO::PARAM_INT;
-            case 'NULL':
-                return \PDO::PARAM_NULL;
-            case 'boolean':
-                return \PDO::PARAM_BOOL;
-            default:
-                throw new \InvalidArgumentException('Type of provided ' . gettype($value) . ' argument could not be inferred');
-        }
     }
 
     /**

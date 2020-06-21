@@ -39,4 +39,22 @@ class BuilderTest extends TestCase
         $builder->value('test');
     }
 
+    public function testStaticSimpleTransformValueTypeError(): void
+    {
+        self::expectException(\LogicException::class);
+        self::expectExceptionMessage('transformValue transformed type to be neither null nor integer');
+        $builder = new class() extends Builder {
+            protected function transformValue($value, ?int &$type)
+            {
+                $type = 'asdf';
+
+                return $value;
+            }
+        };
+
+        $builder::simple('', [
+            ':something' => 1
+        ]);
+    }
+
 }

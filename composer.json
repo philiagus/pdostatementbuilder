@@ -24,7 +24,8 @@
     },
     "require-dev": {
         "phpunit/phpunit": "*",
-        "ext-xdebug": "*"
+        "ext-xdebug": "*",
+        "ext-json": "*"
     },
     "autoload": {
         "psr-4": {
