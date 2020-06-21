@@ -80,14 +80,13 @@ class Builder
             return new Statement($statement);
         }
 
-        $builder = new static();
         $statementParameters = [];
         foreach ($parameters as $name => $value) {
             $type = null;
-            $value = $builder->transformValue($value, $type);
+            $value = static::transformValue($value, $type);
 
             if ($type === null) {
-                $type = $builder->detectType($value);
+                $type = static::detectType($value);
             } elseif (!is_int($type)) {
                 throw new \LogicException(
                     'transformValue transformed type to be neither null nor integer'
@@ -105,12 +104,16 @@ class Builder
     }
 
     /**
+     * Used to transform a value to the needed format used in the statement
+     * By default this method identifies PDOStatementBuilderParameter objects and
+     * uses the corresponding method.
+     *
      * @param mixed $value
      * @param int|null $type
      *
      * @return mixed
      */
-    protected function transformValue($value, ?int &$type)
+    protected static function transformValue($value, ?int &$type)
     {
         if ($value instanceof PDOStatementBuilderParameter) {
             return $value->toPDOStatementValue($type);
@@ -120,11 +123,15 @@ class Builder
     }
 
     /**
+     * Used to infer the type of the provided argument. Should return one of the \PDO::PARAM_* constants
+     * or throw an \InvalidArgumentException if no type could be inferred
+     *
      * @param $value
      *
      * @return int
+     * @throws \InvalidArgumentException
      */
-    protected function detectType($value): int
+    protected static function detectType($value): int
     {
         switch (gettype($value)) {
             case 'string':
@@ -141,6 +148,14 @@ class Builder
         }
     }
 
+    /**
+     * Used to build a statement by parsing the string and tokens created with the other functions
+     * of the builder.
+     *
+     * @param string $statement
+     *
+     * @return Statement
+     */
     final public function build(string $statement): Statement
     {
         if ($this->used) {
@@ -241,7 +256,7 @@ class Builder
                 if ($emptyFallback instanceof Statement) {
                     $data = $emptyFallback;
                 } else {
-                    $data = $this->buildEmptyIn($emptyFallback);
+                    $data = static::buildEmptyIn($emptyFallback);
                 }
             }
         }
@@ -279,6 +294,15 @@ class Builder
         return $this->getCurrentToken()->accepts;
     }
 
+    /**
+     * Returns the current token and optionally validates it
+     * to be the expected type
+     *
+     * @param string|null $expectedType
+     * @param string|null $exceptionMessage
+     *
+     * @return object
+     */
     private function getCurrentToken(
         ?string $expectedType = null,
         ?string $exceptionMessage = null
@@ -324,7 +348,7 @@ class Builder
      *
      * @return Statement
      */
-    protected function buildEmptyIn($emptyFallback): Statement
+    protected static function buildEmptyIn($emptyFallback): Statement
     {
         if (is_int($emptyFallback)) {
             $emptyFallback = '(0' . str_repeat(',0', $emptyFallback - 1) . ')';
@@ -353,10 +377,10 @@ class Builder
 
         $name = str_replace('U', $this->getUnique(), self::PARAMETER_CONSTRUCT);
 
-        $value = $this->transformValue($value, $type);
+        $value = static::transformValue($value, $type);
 
         if ($type === null) {
-            $type = $this->detectType($value);
+            $type = static::detectType($value);
         } elseif (!is_int($type)) {
             throw new \LogicException(
                 'transformValue transformed type to be neither null nor integer'
@@ -370,6 +394,11 @@ class Builder
         return $name;
     }
 
+    /**
+     * Returns a unique identifier
+     *
+     * @return string
+     */
     private function getUnique(): string
     {
         if ($this->unique === null) {
@@ -384,7 +413,7 @@ class Builder
      *
      * @return string
      */
-    public function if($truthy): string
+    final public function if($truthy): string
     {
         $token = $this->generateLogicToken();
 
@@ -404,6 +433,8 @@ class Builder
     }
 
     /**
+     * Generates a logic token
+     *
      * @return string
      */
     private function generateLogicToken(): string
@@ -415,12 +446,23 @@ class Builder
         );
     }
 
+    /**
+     * Pushes an element onto the stack
+     *
+     * @param string $token
+     */
     private function stackPush(string $token): void
     {
         $this->getTokenStack()->push($token);
     }
 
-    public function elseif($truthy): string
+    /**
+     * Branches from an if into an elseif
+     * @param $truthy
+     *
+     * @return string
+     */
+    final public function elseif($truthy): string
     {
         $if = $this->getCurrentToken(
             self::CONSTRUCT_IF,
@@ -442,7 +484,11 @@ class Builder
         return $token;
     }
 
-    public function else(): string
+    /**
+     * Branches from an if or elseif into an else
+     * @return string
+     */
+    final public function else(): string
     {
         $if = $this->getCurrentToken(
             self::CONSTRUCT_IF,
@@ -466,9 +512,11 @@ class Builder
     }
 
     /**
+     * Defines the and of an if, elseif or else, closing the entire if structure
+     * it belongs to
      * @return string
      */
-    public function endif(): string
+    final public function endif(): string
     {
         $if = $this->getCurrentToken(
             self::CONSTRUCT_IF,
@@ -486,7 +534,7 @@ class Builder
     }
 
     /**
-     *
+     * Pops an element from the token stack
      */
     private function stackPop(): void
     {

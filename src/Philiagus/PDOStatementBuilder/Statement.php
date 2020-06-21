@@ -12,7 +12,7 @@ declare(strict_types=1);
 namespace Philiagus\PDOStatementBuilder;
 
 
-class Statement
+final class Statement
 {
     /**
      * @var string

@@ -28,7 +28,7 @@ class BuilderTest extends TestCase
         self::expectException(\LogicException::class);
         self::expectExceptionMessage('transformValue transformed type to be neither null nor integer');
         $builder = new class() extends Builder {
-            protected function transformValue($value, ?int &$type)
+            protected static function transformValue($value, ?int &$type)
             {
                 $type = 'asdf';
 
@@ -44,7 +44,7 @@ class BuilderTest extends TestCase
         self::expectException(\LogicException::class);
         self::expectExceptionMessage('transformValue transformed type to be neither null nor integer');
         $builder = new class() extends Builder {
-            protected function transformValue($value, ?int &$type)
+            protected static function transformValue($value, ?int &$type)
             {
                 $type = 'asdf';
 

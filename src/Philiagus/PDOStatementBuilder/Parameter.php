@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace Philiagus\PDOStatementBuilder;
 
-class Parameter
+final class Parameter
 {
 
     /**
