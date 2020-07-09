@@ -14,20 +14,43 @@ namespace Philiagus\PDOStatementBuilder\Test\Unit;
 use Philiagus\PDOStatementBuilder\Builder;
 use Philiagus\PDOStatementBuilder\Statement;
 use PHPUnit\Framework\Assert;
+use PHPUnit\Framework\TestCase;
 
-abstract class SuccessUnit extends Unit
+abstract class SuccessUnit extends TestCase
 {
+
+    public function subCases(): array
+    {
+        return [];
+    }
+
+    public function provideCases(): array
+    {
+        $furtherCases = $this->subCases();
+        if (empty($furtherCases)) {
+            $cases["default"] = [[]];
+        } else {
+            foreach ($furtherCases as $furtherName => $further) {
+                if (!is_array($further)) {
+                    $further = [$further];
+                }
+                $cases["$furtherName"] = [$further];
+            }
+        }
+
+        return $cases;
+    }
 
     /**
      * @param Builder $builder
      *
      * @param array $further
      *
-     * @dataProvider provideBuilders
+     * @dataProvider provideCases
      */
-    public function testUnit(Builder $builder, $further): void
+    public function testUnit(array $further): void
     {
-        $statement = $this->buildStatement($builder, $further);
+        $statement = $this->buildStatement(new Builder(), $further);
 
         $expectedStatement = $this->getStatement();
         if (preg_match_all('~{(?<type>[A-Z]+):(?<value>[^}]+)}~', $expectedStatement, $matches)) {

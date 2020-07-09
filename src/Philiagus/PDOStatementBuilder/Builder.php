@@ -16,13 +16,14 @@ class Builder
 
     private const CONSTRUCT_ROOT = 'root';
     private const CONSTRUCT_IF = 'if';
+    private const CONSTRUCT_FOREACH = 'foreach';
 
 
     private const UNIQUE_REGEX = '\d+_[0-9a-f]+_\d+';
     public const PARAMETER_REGEX = '/:p' . self::UNIQUE_REGEX . 'p/';
-    public const TOKEN_REGEX = '/\0\0\0' . self::UNIQUE_REGEX . ':(?<depth>\d+)\0\0\0/';
+    public const TOKEN_REGEX = '/\0\0\0' . self::UNIQUE_REGEX . '\0\0\0/';
 
-    private const TOKEN_CONSTRUCT = "\0\0\0U:D\0\0\0";
+    private const TOKEN_CONSTRUCT = "\0\0\0U\0\0\0";
     private const PARAMETER_CONSTRUCT = ":pUp";
 
     /**
@@ -59,6 +60,16 @@ class Builder
      * @var \SplStack|null
      */
     private $tokenStack = null;
+
+    /**
+     * @var array<string,ReplacementMarker>
+     */
+    private $availableReplacementMarkers = [];
+
+    /**
+     * @var array<int,string[]>
+     */
+    private $tokenByDepth = [];
 
     /**
      * Make sure that no child class will ever take any arguments for construction
@@ -173,24 +184,23 @@ class Builder
         $this->used = true;
 
         // extract parameters from query
-        $parameters = [];
+        $foundParameters = [];
         if (preg_match_all(self::PARAMETER_REGEX, $statement, $matches)) {
-            foreach (array_unique($matches[0]) as $match) {
+            foreach ($matches[0] as $match) {
                 if (!isset($this->parameters[$match])) {
                     throw new \LogicException(
                         "An unknown parameter $match was found in the statement. Did you call prepare on a builder not used to bind the parameters?"
                     );
                 }
-                $parameters[$match] = $this->parameters[$match];
-                unset($this->parameters[$match]);
-            }
-
-            if (!empty($this->parameters)) {
-                throw new \LogicException(
-                    "Not all parameters bound by this builder have been used in the statement. Did you remove parts of the generated string?"
-                );
+                $foundParameters[$match] = true;
             }
         }
+        if (!empty(array_diff_key($this->parameters, $foundParameters))) {
+            throw new \LogicException(
+                "Not all parameters bound by this builder have been used in the statement. Did you remove parts of the generated string?"
+            );
+        }
+        unset($foundParameters);
 
         // parse tokens of query
         $tokens = [];
@@ -203,37 +213,72 @@ class Builder
             );
         }
 
+
+        krsort($this->tokenByDepth);
         // evaluate tokens
-        foreach ($this->tokens as $token) {
-            switch ($token->type) {
-                case self::CONSTRUCT_IF:
-                    if (!$token->closed) {
-                        throw new \LogicException('Unclosed if detected');
-                    }
-                    $activeStart = array_search(true, $token->truth);
-                    $replaceWith = '';
-                    if ($activeStart !== false) {
-                        preg_match('/' .
-                            preg_quote($token->tokens[$activeStart]) . '(.*?)' .
-                            preg_quote($token->tokens[$activeStart + 1]) . '/s',
-                            $statement, $matches
-                        );
-                        $replaceWith = $matches[1];
-                    }
-                    $statement = preg_replace('/' . preg_quote($token->tokens[0]) . '.*?' . preg_quote(end($token->tokens)) . '/s', $replaceWith, $statement);
-                    break;
+        foreach ($this->tokenByDepth as $tokens) {
+            foreach ($tokens as $tokenId) {
+                $token = $this->tokens[$tokenId];
+                switch ($token->type) {
+                    case self::CONSTRUCT_IF:
+                        if (!$token->closed) {
+                            throw new \LogicException('Unclosed if detected');
+                        }
+
+                        $activeStart = array_search(true, $token->truth);
+                        $replaceWith = '';
+                        if ($activeStart !== false) {
+                            preg_match('/' .
+                                preg_quote($token->tokens[$activeStart]) . '(.*?)' .
+                                preg_quote($token->tokens[$activeStart + 1]) . '/s',
+                                $statement, $matches
+                            );
+                            $replaceWith = $matches[1];
+                        }
+                        $statement = preg_replace('/' . preg_quote($token->tokens[0]) . '.*?' . preg_quote(end($token->tokens)) . '/s', $replaceWith, $statement);
+                        break;
+                    case self::CONSTRUCT_FOREACH:
+                        if (!$token->closed) {
+                            throw new \LogicException('Unclosed foreach detected');
+                        }
+                        preg_match('/' . preg_quote($token->tokens[0]) . '(?<content>.*?)' . preg_quote($token->tokens[1]) . '/s', $statement, $matches);
+                        $content = $matches['content'];
+                        $loopContent = '';
+                        foreach ($token->array as $key => $value) {
+                            $strtr = [];
+                            /** @var ReplacementMarker $replacer */
+                            foreach (
+                                [
+                                    [$token->keyId, $key],
+                                    [$token->valueId, $value],
+                                ]
+                                as [$replacer, $data]
+                            ) {
+                                foreach ($replacer->getIn() as [$replacementToken, $type, $emptyFallback]) {
+                                    $strtr[$replacementToken] = $this->in($data, $type, $emptyFallback);
+                                }
+                                foreach ($replacer->getValues() as [$replacementToken, $type]) {
+                                    $strtr[$replacementToken] = $this->value($data, $type);
+                                }
+                            }
+                            $loopContent .= strtr($content, $strtr);
+                        }
+                        $statement = str_replace($matches[0], $loopContent, $statement);
+                        break;
+                }
             }
         }
 
         // only bind leftover parameters
         if (preg_match_all(self::PARAMETER_REGEX, $statement, $matches)) {
-            $parameters = array_values(array_intersect_key($parameters, array_flip($matches[0])));
+            $parameters = array_values(array_intersect_key($this->parameters, array_flip($matches[0])));
         } else {
             $parameters = [];
         }
 
         $this->parameters = [];
         $this->tokens = [];
+        $this->tokenByDepth = [];
         $this->tokenStack = null;
 
         return new Statement($statement, $parameters);
@@ -250,6 +295,18 @@ class Builder
     {
         if (!$this->accepts()) {
             return '[IGNORED]';
+        }
+
+        if ($data instanceof ReplacementMarker) {
+            if (!isset($this->availableReplacementMarkers[$data->getToken()])) {
+                throw new \LogicException(
+                    'Using a replacement marker outside of the corresponding structure'
+                );
+            }
+            $token = $this->generateLogicToken();
+            $data->addIn($token, $type, $emptyFallback);
+
+            return $token;
         }
 
         if (!is_array($data) && !($data instanceof Statement)) {
@@ -351,6 +408,38 @@ class Builder
     }
 
     /**
+     * Generates a logic token
+     *
+     * @return string
+     */
+    private function generateLogicToken(): string
+    {
+        $token = str_replace(
+            'U',
+            $this->getUnique(),
+            self::TOKEN_CONSTRUCT
+        );
+        $this->tokenOrder[] = $token;
+        $this->tokenByDepth[$this->getTokenStack()->count()][] = $token;
+
+        return $token;
+    }
+
+    /**
+     * Returns a unique identifier
+     *
+     * @return string
+     */
+    private function getUnique(): string
+    {
+        if ($this->unique === null) {
+            $this->unique = spl_object_id($this) . '_' . bin2hex(pack('E', microtime(true)));
+        }
+
+        return $this->unique . '_' . $this->uniqueIndex++;
+    }
+
+    /**
      * @param $emptyFallback
      *
      * @return Statement
@@ -382,6 +471,18 @@ class Builder
             return '[IGNORED]';
         }
 
+        if ($value instanceof ReplacementMarker) {
+            if (!isset($this->availableReplacementMarkers[$value->getToken()])) {
+                throw new \LogicException(
+                    'Using a replacement marker outside of the corresponding structure'
+                );
+            }
+            $token = $this->generateLogicToken();
+            $value->addValue($token, $type);
+
+            return $token;
+        }
+
         $name = str_replace('U', $this->getUnique(), self::PARAMETER_CONSTRUCT);
 
         $value = static::transformValue($value, $type);
@@ -402,26 +503,16 @@ class Builder
     }
 
     /**
-     * Returns a unique identifier
-     *
-     * @return string
-     */
-    private function getUnique(): string
-    {
-        if ($this->unique === null) {
-            $this->unique = spl_object_id($this) . '_' . bin2hex(pack('E', microtime(true)));
-        }
-
-        return $this->unique . '_' . $this->uniqueIndex++;
-    }
-
-    /**
      * @param $truthy
      *
      * @return string
      */
     final public function if($truthy): string
     {
+        if ($truthy instanceof ReplacementMarker) {
+            throw new \LogicException('Loop element cannot be used in logic constructs');
+        }
+
         $token = $this->generateLogicToken();
 
         $this->tokens[$token] = (object) [
@@ -440,20 +531,6 @@ class Builder
     }
 
     /**
-     * Generates a logic token
-     *
-     * @return string
-     */
-    private function generateLogicToken(): string
-    {
-        return $this->tokenOrder[] = str_replace(
-            ['U', 'D'],
-            [$this->getUnique(), $this->getTokenStack()->count()],
-            self::TOKEN_CONSTRUCT
-        );
-    }
-
-    /**
      * Pushes an element onto the stack
      *
      * @param string $token
@@ -465,12 +542,17 @@ class Builder
 
     /**
      * Branches from an if into an elseif
+     *
      * @param $truthy
      *
      * @return string
      */
     final public function elseif($truthy): string
     {
+        if ($truthy instanceof ReplacementMarker) {
+            throw new \LogicException('Loop element cannot be used in logic constructs');
+        }
+
         $if = $this->getCurrentToken(
             self::CONSTRUCT_IF,
             'Trying to create elseif outside if structure'
@@ -493,6 +575,7 @@ class Builder
 
     /**
      * Branches from an if or elseif into an else
+     *
      * @return string
      */
     final public function else(): string
@@ -521,6 +604,7 @@ class Builder
     /**
      * Defines the and of an if, elseif or else, closing the entire if structure
      * it belongs to
+     *
      * @return string
      */
     final public function endif(): string
@@ -546,6 +630,75 @@ class Builder
     private function stackPop(): void
     {
         $this->getTokenStack()->pop();
+    }
+
+    /**
+     * Uses the value as iterable and loops through the data
+     * $keyIdentifier and $valueIdentifier will be loaded with tokens that can be used in() and value()
+     *
+     * @param $value
+     * @param $keyIdentifier
+     * @param $valueIdentifier
+     *
+     * @return string
+     */
+    final public function foreach($value, &$valueIdentifier, &$keyIdentifier = null): string
+    {
+        if ($value instanceof ReplacementMarker) {
+            throw new \LogicException('Loop element cannot be used in logic constructs');
+        }
+
+        $token = $this->generateLogicToken();
+
+        if (!is_iterable($value)) {
+            throw new \InvalidArgumentException(
+                'The argument provided to foreach must be iterable'
+            );
+        }
+
+        $keyIdentifier = new ReplacementMarker();
+        $valueIdentifier = new ReplacementMarker();
+
+        $this->tokens[$token] = (object) [
+            'token' => $token,
+            'array' => $value,
+            'accepts' => true,
+            'closed' => false,
+            'type' => self::CONSTRUCT_FOREACH,
+            'tokens' => [$token],
+            'keyId' => $keyIdentifier,
+            'valueId' => $valueIdentifier,
+        ];
+
+        $this->availableReplacementMarkers[$keyIdentifier->getToken()] = $keyIdentifier;
+        $this->availableReplacementMarkers[$valueIdentifier->getToken()] = $valueIdentifier;
+
+        $this->stackPush($token);
+
+        return $token;
+    }
+
+    /**
+     * Ends a foreach bracket
+     *
+     * @return string
+     */
+    final public function endforeach(): string
+    {
+        $foreach = $this->getCurrentToken(
+            self::CONSTRUCT_FOREACH,
+            'Trying to create endforeach outside foreach'
+        );
+
+        $token = $this->generateLogicToken();
+        $foreach->tokens[] = $token;
+        $foreach->closed = true;
+        $this->stackPop();
+
+        unset($this->availableReplacementMarkers[$foreach->keyId->getToken()]);
+        unset($this->availableReplacementMarkers[$foreach->valueId->getToken()]);
+
+        return $token;
     }
 
 }

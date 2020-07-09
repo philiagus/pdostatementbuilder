@@ -12,16 +12,25 @@ declare(strict_types=1);
 namespace Philiagus\PDOStatementBuilder\Test\Unit;
 
 use Philiagus\PDOStatementBuilder\Builder;
+use PHPUnit\Framework\TestCase;
 
-abstract class ErrorUnit extends Unit
+abstract class ErrorUnit extends TestCase
 {
 
-    public function testUnit(Builder $builder, $further): void
+    public function testUnit(): void
     {
-        $this->buildStatement($builder, $further);
+        $this->expectException($this->getExceptionClass());
+        $this->expectExceptionMessage($this->expectedExceptionString());
+        $this->buildStatement(new Builder(), []);
     }
 
-    abstract protected function buildStatement(Builder $builder, array $further): void;
+    /**
+     * @return string
+     */
+    public function getExceptionClass(): string
+    {
+        return \LogicException::class;
+    }
 
     /**
      * @return string
@@ -33,11 +42,5 @@ abstract class ErrorUnit extends Unit
 
     abstract protected function getExceptionMessage(): string;
 
-    /**
-     * @return string
-     */
-    public function getExceptionClass(): string
-    {
-        return \LogicException::class;
-    }
+    abstract protected function buildStatement(Builder $builder, array $further): void;
 }
