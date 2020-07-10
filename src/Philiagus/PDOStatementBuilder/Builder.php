@@ -218,6 +218,9 @@ class Builder
         // evaluate tokens
         foreach ($this->tokenByDepth as $tokens) {
             foreach ($tokens as $tokenId) {
+                if(!isset($this->tokens[$tokenId])) {
+                    continue;
+                }
                 $token = $this->tokens[$tokenId];
                 switch ($token->type) {
                     case self::CONSTRUCT_IF:
