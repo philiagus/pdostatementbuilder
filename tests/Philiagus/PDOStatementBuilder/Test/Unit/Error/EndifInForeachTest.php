@@ -12,19 +12,19 @@ declare(strict_types=1);
 namespace Philiagus\PDOStatementBuilder\Test\Unit\Error;
 
 use Philiagus\PDOStatementBuilder\Builder;
-use Philiagus\PDOStatementBuilder\ReplacementMarker;
 use Philiagus\PDOStatementBuilder\Test\Unit\ErrorUnit;
 
-class ReplacementMarkerForeachTest extends ErrorUnit
+class EndifInForeachTest extends ErrorUnit
 {
 
     protected function getExceptionMessage(): string
     {
-        return 'Loop element cannot be used in logic constructs';
+        return 'Trying to create endif outside if structure';
     }
 
     protected function buildStatement(Builder $builder, array $further): void
     {
-        $builder->foreach(new ReplacementMarker(),$a,$b);
+        $builder->foreach(false, $a, $b);
+        $builder->endif();
     }
 }

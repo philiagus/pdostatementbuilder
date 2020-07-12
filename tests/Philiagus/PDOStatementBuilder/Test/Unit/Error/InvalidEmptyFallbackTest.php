@@ -24,6 +24,6 @@ class InvalidEmptyFallbackTest extends ErrorUnit
 
     protected function buildStatement(Builder $builder, array $further): void
     {
-        $builder->in([], null, INF);
+        $builder->build($builder->in([], null, INF));
     }
 }

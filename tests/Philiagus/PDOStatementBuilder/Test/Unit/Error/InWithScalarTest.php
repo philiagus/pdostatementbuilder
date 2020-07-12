@@ -24,6 +24,6 @@ class InWithScalarTest extends ErrorUnit
 
     protected function buildStatement(Builder $builder, array $further): void
     {
-        $builder->in(1);
+        $builder->build($builder->in(1));
     }
 }

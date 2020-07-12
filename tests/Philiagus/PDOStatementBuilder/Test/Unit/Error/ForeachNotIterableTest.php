@@ -24,6 +24,6 @@ class ForeachNotIterableTest extends ErrorUnit
 
     protected function buildStatement(Builder $builder, array $further): void
     {
-        $builder->foreach(false, $a, $b);
+        $builder->build($builder->foreach(false, $a, $b) . $builder->endforeach());
     }
 }

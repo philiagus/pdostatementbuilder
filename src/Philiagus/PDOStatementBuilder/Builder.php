@@ -11,25 +11,18 @@ declare(strict_types=1);
 
 namespace Philiagus\PDOStatementBuilder;
 
+use Philiagus\PDOStatementBuilder\Token\AbstractToken;
+use Philiagus\PDOStatementBuilder\Token\ForeachToken;
+use Philiagus\PDOStatementBuilder\Token\IfToken;
+use Philiagus\PDOStatementBuilder\Token\InToken;
+use Philiagus\PDOStatementBuilder\Token\RawToken;
+use Philiagus\PDOStatementBuilder\Token\ValueToken;
+
 class Builder
 {
+    public const TOKEN_REGEX = '\0\0\0\d+_[0-9a-f]+_\d+_[0-9a-z]+\0\0\0';
 
-    private const CONSTRUCT_ROOT = 'root';
-    private const CONSTRUCT_IF = 'if';
-    private const CONSTRUCT_FOREACH = 'foreach';
-
-
-    private const UNIQUE_REGEX = '\d+_[0-9a-f]+_\d+';
-    public const PARAMETER_REGEX = '/:p' . self::UNIQUE_REGEX . 'p/';
-    public const TOKEN_REGEX = '/\0\0\0' . self::UNIQUE_REGEX . '\0\0\0/';
-
-    private const TOKEN_CONSTRUCT = "\0\0\0U\0\0\0";
     private const PARAMETER_CONSTRUCT = ":pUp";
-
-    /**
-     * @var bool
-     */
-    private $used = false;
 
     /**
      * @var string|null
@@ -42,34 +35,14 @@ class Builder
     private $uniqueIndex = 0;
 
     /**
-     * @var mixed[]
-     */
-    private $parameters = [];
-
-    /**
-     * @var array
+     * @var AbstractToken[]
      */
     private $tokens = [];
-
-    /**
-     * @var string[]
-     */
-    private $tokenOrder = [];
 
     /**
      * @var \SplStack|null
      */
     private $tokenStack = null;
-
-    /**
-     * @var array<string,ReplacementMarker>
-     */
-    private $availableReplacementMarkers = [];
-
-    /**
-     * @var array<int,string[]>
-     */
-    private $tokenByDepth = [];
 
     /**
      * Make sure that no child class will ever take any arguments for construction
@@ -176,142 +149,112 @@ class Builder
      */
     final public function build(string $statement): Statement
     {
-        if ($this->used) {
-            throw new \LogicException(
-                'Build cannot be called twice on the same builder'
-            );
-        }
-        $this->used = true;
-
-        // extract parameters from query
-        $foundParameters = [];
-        if (preg_match_all(self::PARAMETER_REGEX, $statement, $matches)) {
-            foreach ($matches[0] as $match) {
-                if (!isset($this->parameters[$match])) {
-                    throw new \LogicException(
-                        "An unknown parameter $match was found in the statement. Did you call prepare on a builder not used to bind the parameters?"
-                    );
-                }
-                $foundParameters[$match] = true;
+        try {
+            // check for tokens
+            preg_match_all('~' . self::TOKEN_REGEX . '~s', $statement, $matches);
+            if (array_keys($this->tokens) !== $matches[0]) {
+                throw new \LogicException('The tokens in the statement do not match the expected tokens. Did you temper with the generated string?');
             }
-        }
-        if (!empty(array_diff_key($this->parameters, $foundParameters))) {
-            throw new \LogicException(
-                "Not all parameters bound by this builder have been used in the statement. Did you remove parts of the generated string?"
-            );
-        }
-        unset($foundParameters);
 
-        // parse tokens of query
-        $tokens = [];
-        if (preg_match_all(self::TOKEN_REGEX, $statement, $matches)) {
-            $tokens = $matches[0];
-        }
-        if ($tokens !== $this->tokenOrder) {
-            throw new \LogicException(
-                "The tokens in the statement do not match the expected tokens. Did you temper with the generated string?"
-            );
-        }
-
-
-        krsort($this->tokenByDepth);
-        // evaluate tokens
-        foreach ($this->tokenByDepth as $tokens) {
-            foreach ($tokens as $tokenId) {
-                if(!isset($this->tokens[$tokenId])) {
-                    continue;
-                }
-                $token = $this->tokens[$tokenId];
-                switch ($token->type) {
-                    case self::CONSTRUCT_IF:
-                        if (!$token->closed) {
-                            throw new \LogicException('Unclosed if detected');
-                        }
-
-                        $activeStart = array_search(true, $token->truth);
-                        $replaceWith = '';
-                        if ($activeStart !== false) {
-                            preg_match('/' .
-                                preg_quote($token->tokens[$activeStart]) . '(.*?)' .
-                                preg_quote($token->tokens[$activeStart + 1]) . '/s',
-                                $statement, $matches
-                            );
-                            $replaceWith = $matches[1];
-                        }
-                        $statement = preg_replace('/' . preg_quote($token->tokens[0]) . '.*?' . preg_quote(end($token->tokens)) . '/s', $replaceWith, $statement);
-                        break;
-                    case self::CONSTRUCT_FOREACH:
-                        if (!$token->closed) {
-                            throw new \LogicException('Unclosed foreach detected');
-                        }
-                        preg_match('/' . preg_quote($token->tokens[0]) . '(?<content>.*?)' . preg_quote($token->tokens[1]) . '/s', $statement, $matches);
-                        $content = $matches['content'];
-                        $loopContent = '';
-                        foreach ($token->array as $key => $value) {
-                            $strtr = [];
-                            /** @var ReplacementMarker $replacer */
-                            foreach (
-                                [
-                                    [$token->keyId, $key],
-                                    [$token->valueId, $value],
-                                ]
-                                as [$replacer, $data]
-                            ) {
-                                foreach ($replacer->getIn() as [$replacementToken, $type, $emptyFallback]) {
-                                    $strtr[$replacementToken] = $this->in($data, $type, $emptyFallback);
-                                }
-                                foreach ($replacer->getValues() as [$replacementToken, $type]) {
-                                    $strtr[$replacementToken] = $this->value($data, $type);
-                                }
-                            }
-                            $loopContent .= strtr($content, $strtr);
-                        }
-                        $statement = str_replace($matches[0], $loopContent, $statement);
-                        break;
-                }
+            if (empty($this->tokens)) {
+                return new Statement($statement, []);
             }
+
+            foreach ($this->tokens as $token) {
+                $token->assertClosed();
+            }
+            /** @var null|string $currentToken */
+            $currentToken = null;
+            $generatedStatement = '';
+            $generatedParameters = [];
+
+            $tokens = array_keys($this->tokens);
+            $rawParts = preg_split('~' . self::TOKEN_REGEX . '~', $statement);
+            $generatedStatement .= array_shift($rawParts);
+            $tokenToFollowingRaw = array_combine(array_keys($this->tokens), $rawParts);
+            $tokenToNextToken = array_combine(
+                $tokens,
+                array_merge(array_slice($tokens, 1), [null])
+            );
+
+            $interaction = null;
+            $interaction = new EvaluationControl(
+            // goto
+                function ($target) use (&$currentToken) {
+                    $currentToken = $target;
+                },
+                // continue
+                function () use (
+                    $statement,
+                    &$generatedStatement,
+                    &$currentToken,
+                    $tokenToFollowingRaw,
+                    $tokenToNextToken
+                ) {
+                    $generatedStatement .= $tokenToFollowingRaw[$currentToken];
+                    $currentToken = $tokenToNextToken[$currentToken];
+                },
+                // value
+                function ($value, ?int $type) use (&$generatedStatement, &$generatedParameters) {
+                    $generatedStatement .= $this->executeValue($value, $type, $generatedParameters);
+                },
+                // in
+                function ($data, ?int $type, $emptyFallback) use (&$generatedStatement, &$generatedParameters) {
+                    $generatedStatement .= $this->executeIn($data, $type, $emptyFallback, $generatedParameters);
+                },
+                //raw
+                function (string $raw) use (&$generatedStatement) {
+                    $generatedStatement .= $raw;
+                }
+            );
+
+            $currentToken = $tokens[0];
+            while ($currentToken !== null) {
+                $this->tokens[$currentToken]->execute($currentToken, $interaction);
+            }
+
+            return new Statement($generatedStatement, $generatedParameters);
+        } finally {
+            $this->tokenStack = null;
+            $this->tokens = [];
+        }
+    }
+
+    private function executeValue($value, ?int $type, array &$generatedParameters): string
+    {
+        $name = str_replace('U', $this->getUnique(), self::PARAMETER_CONSTRUCT);
+
+        $value = static::transformValue($value, $type);
+
+        if ($type === null) {
+            $type = static::detectType($value);
+        } elseif (!is_int($type)) {
+            throw new \LogicException(
+                'transformValue transformed type to be neither null nor integer'
+            );
         }
 
-        // only bind leftover parameters
-        if (preg_match_all(self::PARAMETER_REGEX, $statement, $matches)) {
-            $parameters = array_values(array_intersect_key($this->parameters, array_flip($matches[0])));
-        } else {
-            $parameters = [];
-        }
+        $generatedParameters[$name] = new Parameter($name, $value, $type);
 
-        $this->parameters = [];
-        $this->tokens = [];
-        $this->tokenByDepth = [];
-        $this->tokenStack = null;
-
-        return new Statement($statement, $parameters);
+        return $name;
     }
 
     /**
-     * @param $data
-     * @param int|null $type
-     * @param mixed|Statement $emptyFallback
+     * Returns a unique identifier
      *
      * @return string
      */
-    final public function in($data, ?int $type = null, $emptyFallback = 1): string
+    private function getUnique(): string
     {
-        if (!$this->accepts()) {
-            return '[IGNORED]';
+        if ($this->unique === null) {
+            $this->unique = spl_object_id($this) . '_' . bin2hex(pack('E', microtime(true)));
         }
 
-        if ($data instanceof ReplacementMarker) {
-            if (!isset($this->availableReplacementMarkers[$data->getToken()])) {
-                throw new \LogicException(
-                    'Using a replacement marker outside of the corresponding structure'
-                );
-            }
-            $token = $this->generateLogicToken();
-            $data->addIn($token, $type, $emptyFallback);
+        return $this->unique . '_' . $this->uniqueIndex++;
+    }
 
-            return $token;
-        }
-
+    private function executeIn($data, ?int $type, $emptyFallback, array &$generatedParameters): string
+    {
         if (!is_array($data) && !($data instanceof Statement)) {
             throw new \InvalidArgumentException(
                 'in data must be provided as array or instance of Statement'
@@ -330,116 +273,27 @@ class Builder
 
         if ($data instanceof Statement) {
             foreach ($data->getParameters() as $parameter) {
-                $this->parameters[$parameter->getName()] = $parameter;
+                $generatedParameters[$parameter->getName()] = $parameter;
             }
 
             return $data->getStatement();
         }
 
         $recursiveBinder = null;
-        $recursiveBinder = function ($element) use (&$recursiveBinder, $type): string {
+        $recursiveBinder = function ($element) use (&$generatedStatement, &$generatedParameters, &$recursiveBinder, $type): string {
             if (is_array($element)) {
                 return '(' . implode(', ', array_map(
                         $recursiveBinder, $element
                     )) . ')';
             }
 
-            return $this->value($element, $type);
+            return $this->executeValue($element, $type, $generatedParameters);
         };
 
         return implode(', ', array_map(
             $recursiveBinder,
             $data
         ));
-    }
-
-    /**
-     * @return bool
-     */
-    private function accepts(): bool
-    {
-        return $this->getCurrentToken()->accepts;
-    }
-
-    /**
-     * Returns the current token and optionally validates it
-     * to be the expected type
-     *
-     * @param string|null $expectedType
-     * @param string|null $exceptionMessage
-     *
-     * @return object
-     */
-    private function getCurrentToken(
-        ?string $expectedType = null,
-        ?string $exceptionMessage = null
-    ): object
-    {
-        $stack = $this->getTokenStack();
-        if ($stack->isEmpty()) {
-            $token = (object) [
-                'type' => self::CONSTRUCT_ROOT,
-                'accepts' => true,
-            ];
-        } else {
-            $token = $this->tokens[$stack->top()] ?? (object) [
-                    'type' => self::CONSTRUCT_ROOT,
-                ];
-        }
-
-        if ($expectedType === null) {
-            return $token;
-        }
-
-        if ($token->type !== $expectedType) {
-            throw new \LogicException($exceptionMessage);
-        }
-
-        return $token;
-    }
-
-    /**
-     * @return \SplStack
-     */
-    private function getTokenStack(): \SplStack
-    {
-        if ($this->tokenStack === null) {
-            $this->tokenStack = new \SplStack();
-        }
-
-        return $this->tokenStack;
-    }
-
-    /**
-     * Generates a logic token
-     *
-     * @return string
-     */
-    private function generateLogicToken(): string
-    {
-        $token = str_replace(
-            'U',
-            $this->getUnique(),
-            self::TOKEN_CONSTRUCT
-        );
-        $this->tokenOrder[] = $token;
-        $this->tokenByDepth[$this->getTokenStack()->count()][] = $token;
-
-        return $token;
-    }
-
-    /**
-     * Returns a unique identifier
-     *
-     * @return string
-     */
-    private function getUnique(): string
-    {
-        if ($this->unique === null) {
-            $this->unique = spl_object_id($this) . '_' . bin2hex(pack('E', microtime(true)));
-        }
-
-        return $this->unique . '_' . $this->uniqueIndex++;
     }
 
     /**
@@ -470,39 +324,41 @@ class Builder
      */
     final public function value($value, ?int $type = null): string
     {
-        if (!$this->accepts()) {
-            return '[IGNORED]';
-        }
+        $token = new ValueToken($value, $type);
+        $this->tokens[$token->getId()] = $token;
 
-        if ($value instanceof ReplacementMarker) {
-            if (!isset($this->availableReplacementMarkers[$value->getToken()])) {
-                throw new \LogicException(
-                    'Using a replacement marker outside of the corresponding structure'
-                );
-            }
-            $token = $this->generateLogicToken();
-            $value->addValue($token, $type);
+        return $token->getId();
+    }
 
-            return $token;
-        }
+    /**
+     * Injects the value as string into the resulting statement string
+     * This is most times used in context of foreach values
+     *
+     * @param $value
+     *
+     * @return string
+     */
+    final public function raw($value): string
+    {
+        $token = new RawToken($value);
+        $this->tokens[$token->getId()] = $token;
 
-        $name = str_replace('U', $this->getUnique(), self::PARAMETER_CONSTRUCT);
+        return $token->getId();
+    }
 
-        $value = static::transformValue($value, $type);
+    /**
+     * @param $data
+     * @param int|null $type
+     * @param mixed|Statement $emptyFallback
+     *
+     * @return string
+     */
+    final public function in($data, ?int $type = null, $emptyFallback = 1): string
+    {
+        $token = new InToken($data, $type, $emptyFallback);
+        $this->tokens[$token->getId()] = $token;
 
-        if ($type === null) {
-            $type = static::detectType($value);
-        } elseif (!is_int($type)) {
-            throw new \LogicException(
-                'transformValue transformed type to be neither null nor integer'
-            );
-        }
-
-        $parameter = new Parameter($name, $value, $type);
-
-        $this->parameters[$name] = $parameter;
-
-        return $name;
+        return $token->getId();
     }
 
     /**
@@ -512,35 +368,33 @@ class Builder
      */
     final public function if($truthy): string
     {
-        if ($truthy instanceof ReplacementMarker) {
-            throw new \LogicException('Loop element cannot be used in logic constructs');
-        }
-
-        $token = $this->generateLogicToken();
-
-        $this->tokens[$token] = (object) [
-            'token' => $token,
-            'accepts' => (bool) $truthy,
-            'else' => false,
-            'closed' => false,
-            'type' => self::CONSTRUCT_IF,
-            'tokens' => [$token],
-            'truth' => [(bool) $truthy],
-        ];
-
+        $token = new IfToken($truthy);
+        $this->tokens[$token->getId()] = $token;
         $this->stackPush($token);
 
-        return $token;
+        return $token->getId();
     }
 
     /**
      * Pushes an element onto the stack
      *
-     * @param string $token
+     * @param AbstractToken $token
      */
-    private function stackPush(string $token): void
+    private function stackPush(AbstractToken $token): void
     {
         $this->getTokenStack()->push($token);
+    }
+
+    /**
+     * @return \SplStack
+     */
+    private function getTokenStack(): \SplStack
+    {
+        if ($this->tokenStack === null) {
+            $this->tokenStack = new \SplStack();
+        }
+
+        return $this->tokenStack;
     }
 
     /**
@@ -552,28 +406,42 @@ class Builder
      */
     final public function elseif($truthy): string
     {
-        if ($truthy instanceof ReplacementMarker) {
-            throw new \LogicException('Loop element cannot be used in logic constructs');
-        }
-
-        $if = $this->getCurrentToken(
-            self::CONSTRUCT_IF,
+        $token = $this->getCurrentToken(
+            IfToken::class,
             'Trying to create elseif outside if structure'
         );
 
-        if ($if->else) {
-            throw new \LogicException(
-                'Trying to create elseif after else'
-            );
+        $id = $token->elseif($truthy);
+        $this->tokens[$id] = $token;
+
+        return $id;
+    }
+
+    /**
+     * Returns the current token and optionally validates it
+     * to be the expected type
+     *
+     * @param string|null $expectedType
+     * @param string|null $exceptionMessage
+     *
+     * @return AbstractToken
+     */
+    private function getCurrentToken(
+        string $expectedType = null,
+        string $exceptionMessage = null
+    ): AbstractToken
+    {
+        $stack = $this->getTokenStack();
+        if ($stack->isEmpty()) {
+            throw new \LogicException($exceptionMessage);
         }
 
-        $token = $this->generateLogicToken();
+        $top = $stack->top();
+        if (!($top instanceof $expectedType) || !($top instanceof AbstractToken)) {
+            throw new \LogicException($exceptionMessage);
+        }
 
-        $if->accepts = $truthy && !in_array(true, $if->truth);
-        $if->truth[] = (bool) $truthy;
-        $if->tokens[] = $token;
-
-        return $token;
+        return $top;
     }
 
     /**
@@ -583,25 +451,15 @@ class Builder
      */
     final public function else(): string
     {
-        $if = $this->getCurrentToken(
-            self::CONSTRUCT_IF,
+        $token = $this->getCurrentToken(
+            IfToken::class,
             'Trying to create else outside if structure'
         );
 
-        if ($if->else) {
-            throw new \LogicException(
-                'Trying to create else after else'
-            );
-        }
+        $id = $token->else();
+        $this->tokens[$id] = $token;
 
-        $token = $this->generateLogicToken();
-
-        $if->accepts = !in_array(true, $if->truth);
-        $if->truth[] = $if->accepts;
-        $if->tokens[] = $token;
-        $if->else = true;
-
-        return $token;
+        return $id;
     }
 
     /**
@@ -612,19 +470,16 @@ class Builder
      */
     final public function endif(): string
     {
-        $if = $this->getCurrentToken(
-            self::CONSTRUCT_IF,
+        $token = $this->getCurrentToken(
+            IfToken::class,
             'Trying to create endif outside if structure'
         );
 
-        $token = $this->generateLogicToken();
-
-        $if->tokens[] = $token;
-        $if->closed = true;
-
+        $id = $token->endif();
+        $this->tokens[$id] = $token;
         $this->stackPop();
 
-        return $token;
+        return $id;
     }
 
     /**
@@ -647,38 +502,11 @@ class Builder
      */
     final public function foreach($value, &$valueIdentifier, &$keyIdentifier = null): string
     {
-        if ($value instanceof ReplacementMarker) {
-            throw new \LogicException('Loop element cannot be used in logic constructs');
-        }
-
-        $token = $this->generateLogicToken();
-
-        if (!is_iterable($value)) {
-            throw new \InvalidArgumentException(
-                'The argument provided to foreach must be iterable'
-            );
-        }
-
-        $keyIdentifier = new ReplacementMarker();
-        $valueIdentifier = new ReplacementMarker();
-
-        $this->tokens[$token] = (object) [
-            'token' => $token,
-            'array' => $value,
-            'accepts' => true,
-            'closed' => false,
-            'type' => self::CONSTRUCT_FOREACH,
-            'tokens' => [$token],
-            'keyId' => $keyIdentifier,
-            'valueId' => $valueIdentifier,
-        ];
-
-        $this->availableReplacementMarkers[$keyIdentifier->getToken()] = $keyIdentifier;
-        $this->availableReplacementMarkers[$valueIdentifier->getToken()] = $valueIdentifier;
-
+        $token = new ForeachToken($value, $valueIdentifier, $keyIdentifier);
+        $this->tokens[$token->getId()] = $token;
         $this->stackPush($token);
 
-        return $token;
+        return $token->getId();
     }
 
     /**
@@ -689,19 +517,15 @@ class Builder
     final public function endforeach(): string
     {
         $foreach = $this->getCurrentToken(
-            self::CONSTRUCT_FOREACH,
+            ForeachToken::class,
             'Trying to create endforeach outside foreach'
         );
 
-        $token = $this->generateLogicToken();
-        $foreach->tokens[] = $token;
-        $foreach->closed = true;
+        $id = $foreach->end();
+        $this->tokens[$id] = $foreach;
         $this->stackPop();
 
-        unset($this->availableReplacementMarkers[$foreach->keyId->getToken()]);
-        unset($this->availableReplacementMarkers[$foreach->valueId->getToken()]);
-
-        return $token;
+        return $id;
     }
 
 }

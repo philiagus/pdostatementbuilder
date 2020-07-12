@@ -36,7 +36,7 @@ class BuilderTest extends TestCase
             }
         };
 
-        $builder->value('test');
+        $builder->build($builder->value('test'));
     }
 
     public function testStaticSimpleTransformValueTypeError(): void

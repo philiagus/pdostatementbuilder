@@ -19,7 +19,7 @@ class ElseAfterElseTest extends ErrorUnit
 
     protected function getExceptionMessage(): string
     {
-        return 'Trying to create else after else';
+        return 'Trying to define else for if which already has an else defined, expected endif';
     }
 
     protected function buildStatement(Builder $builder, array $further): void
