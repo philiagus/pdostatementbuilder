@@ -12,13 +12,14 @@ declare(strict_types=1);
 
 namespace Philiagus\PDOStatementBuilder\Token;
 
+use Philiagus\PDOStatementBuilder\BuilderValue;
 use Philiagus\PDOStatementBuilder\EvaluationControl;
 
 class IfToken extends AbstractToken
 {
 
     /**
-     * @var array<string,mixed>
+     * @var array<string,mixed[]>
      */
     private $idToTruthy = [];
 
@@ -34,10 +35,13 @@ class IfToken extends AbstractToken
 
     private $hasExecuted = false;
 
-    public function __construct($truthy)
+    public function __construct($truthy, ?callable $conversion)
     {
         parent::__construct('if');
-        $this->idToTruthy[$this->getId()] = $truthy;
+        $this->idToTruthy[$this->getId()] = [
+            $truthy,
+            $conversion
+        ];
     }
 
     public function execute(string $token, EvaluationControl $builderInteraction): void
@@ -52,8 +56,16 @@ class IfToken extends AbstractToken
             return;
         }
 
-        foreach ($this->idToTruthy as $id => $truthy) {
-            if ($truthy) {
+        foreach ($this->idToTruthy as $id => [$truthy, $conversion]) {
+            if($truthy instanceof BuilderValue) {
+                $truthyValue = $truthy->get();
+            } else {
+                $truthyValue = $truthy;
+            }
+            if($conversion !== null) {
+                $truthyValue = $conversion($truthyValue);
+            }
+            if ($truthyValue) {
                 $this->hasExecuted = true;
                 $builderInteraction->goto($id)->continue();
 
@@ -64,13 +76,13 @@ class IfToken extends AbstractToken
         $builderInteraction->goto($this->endif)->continue();
     }
 
-    public function elseif($truthy): string
+    public function elseif($truthy, ?callable $conversion): string
     {
         if ($this->else !== null) {
             throw new \LogicException('Trying to define elseif for if which already has an else defined, expected endif');
         }
         $id = $this->uniqueId('elseif');
-        $this->idToTruthy[$id] = $truthy;
+        $this->idToTruthy[$id] = [$truthy, $conversion];
 
         return $id;
     }
@@ -82,7 +94,7 @@ class IfToken extends AbstractToken
         }
         $id = $this->uniqueId('else');
         $this->else = $id;
-        $this->idToTruthy[$id] = true;
+        $this->idToTruthy[$id] = [true, null];
 
         return $id;
     }

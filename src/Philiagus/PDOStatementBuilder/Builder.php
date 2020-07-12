@@ -362,13 +362,16 @@ class Builder
     }
 
     /**
+     * Starts an if block. Conversion is provided with the $truthy value, which is needed
+     * when using conditional if in context of foreach keys and values
      * @param $truthy
+     * @param callable|null $conversion
      *
      * @return string
      */
-    final public function if($truthy): string
+    final public function if($truthy, ?callable $conversion = null): string
     {
-        $token = new IfToken($truthy);
+        $token = new IfToken($truthy, $conversion);
         $this->tokens[$token->getId()] = $token;
         $this->stackPush($token);
 
@@ -402,16 +405,18 @@ class Builder
      *
      * @param $truthy
      *
+     * @param callable|null $conversion
+     *
      * @return string
      */
-    final public function elseif($truthy): string
+    final public function elseif($truthy, ?callable $conversion = null): string
     {
         $token = $this->getCurrentToken(
             IfToken::class,
             'Trying to create elseif outside if structure'
         );
 
-        $id = $token->elseif($truthy);
+        $id = $token->elseif($truthy, $conversion);
         $this->tokens[$id] = $token;
 
         return $id;
