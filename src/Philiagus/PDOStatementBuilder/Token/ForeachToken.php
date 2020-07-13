@@ -73,6 +73,11 @@ class ForeachToken extends AbstractToken
             foreach ($value as $k => $v) {
                 $this->dataAsArray[] = [$k, $v];
             }
+            if (empty($this->dataAsArray)) {
+                $builderInteraction->goto($this->endforeach)->continue();
+
+                return;
+            }
             [$k, $v] = array_shift($this->dataAsArray);
             $this->key->set($k);
             $this->value->set($v);
