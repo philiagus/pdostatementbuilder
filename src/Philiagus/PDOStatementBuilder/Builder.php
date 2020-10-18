@@ -253,6 +253,14 @@ class Builder
         return $this->unique . '_' . $this->uniqueIndex++;
     }
 
+    /**
+     * @param $data
+     * @param int|null $type
+     * @param $emptyFallback
+     * @param array $generatedParameters
+     *
+     * @return string
+     */
     private function executeIn($data, ?int $type, $emptyFallback, array &$generatedParameters): string
     {
         if (!is_array($data) && !($data instanceof Statement)) {
@@ -273,7 +281,11 @@ class Builder
 
         if ($data instanceof Statement) {
             foreach ($data->getParameters() as $parameter) {
-                $generatedParameters[$parameter->getName()] = $parameter;
+                $parameterName = $parameter->getName();
+                if (isset($generatedParameters[$parameterName])) {
+                    throw new \LogicException("Sub-Statement error: Parameter $parameterName would be bound twice");
+                }
+                $generatedParameters[$parameterName] = $parameter;
             }
 
             return $data->getStatement();
@@ -364,6 +376,7 @@ class Builder
     /**
      * Starts an if block. Conversion is provided with the $truthy value, which is needed
      * when using conditional if in context of foreach keys and values
+     *
      * @param $truthy
      * @param callable|null $conversion
      *
