@@ -1,4 +1,8 @@
 # UPDATE
+## v1.0.1 - v1.0.2
+
+**This is a bugfix release.** The default empty expression used brackets around the outermost column definition for multiple columns (such as `->in([], null, 3)`).
+
 ## v1.0.0 - v1.0.1
 
 **This is a bugfix release.** The default empty in previously generated statements selecting from `` `dual` ``, which should just be `dual`, for MySQL to understand it correctly.

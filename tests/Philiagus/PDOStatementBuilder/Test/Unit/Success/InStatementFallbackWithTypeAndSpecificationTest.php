@@ -28,6 +28,6 @@ class InStatementFallbackWithTypeAndSpecificationTest extends SuccessUnit
 
     protected function getStatement(): string
     {
-        return 'PARAM SELECT (0,0,0) FROM (SELECT 0 FROM dual) `noResultSubSelect` WHERE 0';
+        return 'PARAM SELECT 0,0,0 FROM (SELECT 0 FROM dual) `noResultSubSelect` WHERE 0';
     }
 }

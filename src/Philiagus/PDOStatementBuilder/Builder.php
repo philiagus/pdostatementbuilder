@@ -316,7 +316,7 @@ class Builder
     protected static function buildEmptyIn($emptyFallback): Statement
     {
         if (is_int($emptyFallback)) {
-            $emptyFallback = '(0' . str_repeat(',0', $emptyFallback - 1) . ')';
+            $emptyFallback = '0' . str_repeat(',0', $emptyFallback - 1) . '';
         }
 
         if (is_string($emptyFallback)) {
