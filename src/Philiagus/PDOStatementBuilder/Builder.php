@@ -320,7 +320,7 @@ class Builder
         }
 
         if (is_string($emptyFallback)) {
-            return new Statement("SELECT $emptyFallback FROM (SELECT 0 FROM `dual`) `noResultSubSelect` WHERE 0");
+            return new Statement("SELECT $emptyFallback FROM (SELECT 0 FROM dual) `noResultSubSelect` WHERE 0");
         }
 
         throw new \InvalidArgumentException(
