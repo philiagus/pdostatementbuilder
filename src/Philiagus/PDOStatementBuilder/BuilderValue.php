@@ -15,6 +15,6 @@ namespace Philiagus\PDOStatementBuilder;
 interface BuilderValue
 {
 
-    public function get();
+    public function resolveAsPDOStatementBuilderValue();
 
 }

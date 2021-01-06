@@ -38,4 +38,13 @@ abstract class AbstractBuilderValue implements BuilderValue, ArrayAccess
         throw new \LogicException('offset unset cannot be called on BuilderValues');
     }
 
+    public function __call($name, $arguments)
+    {
+        return new CallValue($this, $name, $arguments);
+    }
+
+    public function __invoke(...$arguments)
+    {
+        return new InvokeValue($this, $arguments);
+    }
 }

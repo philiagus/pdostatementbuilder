@@ -58,7 +58,7 @@ class IfToken extends AbstractToken
 
         foreach ($this->idToTruthy as $id => [$truthy, $conversion]) {
             if($truthy instanceof BuilderValue) {
-                $truthyValue = $truthy->get();
+                $truthyValue = $truthy->resolveAsPDOStatementBuilderValue();
             } else {
                 $truthyValue = $truthy;
             }

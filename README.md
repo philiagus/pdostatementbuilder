@@ -1,7 +1,19 @@
 # philiagus/pdostatementbuilder
 PHP classes to easily build PDO statements.
 
-## Why?
+## What is it?
+
+A simple way of building complex PDOStatements in a readable way. Want to build an overly complex filter SQL for your project? This is the code to use!
+
+## Is it covered?
+- 100% Test covered
+- Tested in
+    - PHP7.2
+    - PHP7.3
+    - PHP7.4
+    - PHP8.0
+
+## Why do all this?
 
 It is very common in database related coding to build statements based on a set of input parameters provided to a repository. This usually looks something like this:
 

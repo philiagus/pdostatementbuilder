@@ -44,6 +44,16 @@ class ForeachToken extends AbstractToken
      */
     private $dataAsArray = [];
 
+    /**
+     * @var int
+     */
+    private $dataPointer = 0;
+
+    /**
+     * @var int
+     */
+    private $dataPointerMax = 0;
+
     public function __construct($iterable, &$value, &$key)
     {
         parent::__construct('foreach');
@@ -60,10 +70,12 @@ class ForeachToken extends AbstractToken
 
     public function execute(string $token, EvaluationControl $builderInteraction)
     {
+        // check that we are at the foreach token
         if ($token === $this->getId()) {
             $this->dataAsArray = [];
+            $this->dataPointer = 0;
             if ($this->iterable instanceof BuilderValue) {
-                $value = $this->iterable->get();
+                $value = $this->iterable->resolveAsPDOStatementBuilderValue();
             } else {
                 $value = $this->iterable;
             }
@@ -73,29 +85,41 @@ class ForeachToken extends AbstractToken
             foreach ($value as $k => $v) {
                 $this->dataAsArray[] = [$k, $v];
             }
-            if (empty($this->dataAsArray)) {
+            $this->dataPointerMax = count($this->dataAsArray);
+            if ($this->dataPointerMax === 0) {
+                // empty foreach -> move to endforeach
                 $builderInteraction->goto($this->endforeach)->continue();
 
                 return;
             }
-            [$k, $v] = array_shift($this->dataAsArray);
-            $this->key->set($k);
-            $this->value->set($v);
+            $this->nextValue();
             $builderInteraction->continue();
 
             return;
         }
 
-        if (empty($this->dataAsArray)) {
+        // we are at the endforeach token
+        if ($this->dataPointer >= $this->dataPointerMax) {
+            // each element has been iterated, reset data for memory usage
+            $this->dataAsArray = [];
+            $this->dataPointerMax = 0;
+            $this->dataPointer = 0;
             $builderInteraction->continue();
 
             return;
         }
 
-        [$k, $v] = array_shift($this->dataAsArray);
-        $this->key->set($k);
-        $this->value->set($v);
+        // activate next value and move back to loop head
+        $this->nextValue();
         $builderInteraction->goto($this->getId())->continue();
+    }
+
+    private function nextValue(): void
+    {
+        [$key, $value] = $this->dataAsArray[$this->dataPointer];
+        $this->key->setPDOStatementBuilderValue($key);
+        $this->value->setPDOStatementBuilderValue($value);
+        $this->dataPointer++;
     }
 
     public function assertClosed(): void

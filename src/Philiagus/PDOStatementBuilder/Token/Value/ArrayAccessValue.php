@@ -33,14 +33,14 @@ class ArrayAccessValue extends AbstractBuilderValue
         $this->offset = $offset;
     }
 
-    public function get()
+    public function resolveAsPDOStatementBuilderValue()
     {
         if ($this->offset instanceof BuilderValue) {
-            $offset = $this->offset->get();
+            $offset = $this->offset->resolveAsPDOStatementBuilderValue();
         } else {
             $offset = $this->offset;
         }
 
-        return $this->source->get()[$offset];
+        return $this->source->resolveAsPDOStatementBuilderValue()[$offset];
     }
 }

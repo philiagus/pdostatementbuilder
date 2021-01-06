@@ -37,7 +37,7 @@ class InToken extends AbstractToken
     public function execute(string $token, EvaluationControl $builderInteraction): void
     {
         if ($this->data instanceof BuilderValue) {
-            $value = $this->data->get();
+            $value = $this->data->resolveAsPDOStatementBuilderValue();
         } else {
             $value = $this->data;
         }

@@ -31,7 +31,7 @@ class RawToken extends AbstractToken
     public function execute(string $token, EvaluationControl $builderInteraction): void
     {
         if ($this->value instanceof BuilderValue) {
-            $value = $this->value->get();
+            $value = $this->value->resolveAsPDOStatementBuilderValue();
         } else {
             $value = $this->value;
         }

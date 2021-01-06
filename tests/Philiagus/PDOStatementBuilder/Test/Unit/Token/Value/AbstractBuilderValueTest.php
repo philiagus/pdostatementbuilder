@@ -22,7 +22,7 @@ class AbstractBuilderValueTest extends TestCase
     private function instance(): AbstractBuilderValue
     {
         return new class extends AbstractBuilderValue{
-            public function get()
+            public function resolveAsPDOStatementBuilderValue()
             {
                 return 'ok';
             }

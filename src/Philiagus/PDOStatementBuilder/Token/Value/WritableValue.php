@@ -17,18 +17,27 @@ class WritableValue extends AbstractBuilderValue
 
     private $value = null;
 
+    private $valueSet = false;
+
     public function __construct()
     {
     }
 
-    public function get()
+    public function resolveAsPDOStatementBuilderValue()
     {
+        if (!$this->valueSet) {
+            throw new \LogicException(
+                "Trying to resolve WritableValue without having a set value first"
+            );
+        }
+
         return $this->value;
     }
 
-    public function set($value): self
+    public function setPDOStatementBuilderValue($value): self
     {
         $this->value = $value;
+        $this->valueSet = true;
 
         return $this;
     }
