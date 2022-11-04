@@ -1,5 +1,13 @@
 # UPDATE
 
+## v1.1.0 - v1.2.0
+
+**WARNING**: Support for PHP < 8.0 has been dropped
+
+### Fixes
+
+- Fixed inheritance rules for PHP8.1
+
 ## v1.0.2 - v1.1.0
 
 ### Changes

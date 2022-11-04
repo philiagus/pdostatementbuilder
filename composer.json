@@ -16,8 +16,9 @@
         }
     ],
     "require": {
-        "php": ">=7.2",
-        "ext-pdo": "*"
+        "php": ">=8.0",
+        "ext-pdo": "*",
+        "ext-json": "*"
     },
     "support": {
         "issues": "https://github.com/philiagus/pdostatementbuilder/issues"
@@ -25,7 +26,7 @@
     "require-dev": {
         "phpunit/phpunit": "*",
         "ext-xdebug": "*",
-        "ext-json": "*"
+        "phpspec/prophecy-phpunit": "^2.0"
     },
     "autoload": {
         "psr-4": {

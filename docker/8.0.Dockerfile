@@ -14,3 +14,5 @@ WORKDIR /app
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 COPY ./ /app
+
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"

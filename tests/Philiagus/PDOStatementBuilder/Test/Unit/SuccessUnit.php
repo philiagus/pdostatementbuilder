@@ -15,9 +15,11 @@ use Philiagus\PDOStatementBuilder\Builder;
 use Philiagus\PDOStatementBuilder\Statement;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
+use Prophecy\PhpUnit\ProphecyTrait;
 
 abstract class SuccessUnit extends TestCase
 {
+    use ProphecyTrait;
 
     public function subCases(): array
     {
@@ -75,7 +77,7 @@ abstract class SuccessUnit extends TestCase
             }
 
             $regexExpectedStatement = "/^$regexExpectedStatement$/";
-            Assert::assertRegExp($regexExpectedStatement, $statement->getStatement());
+            Assert::assertMatchesRegularExpression($regexExpectedStatement, $statement->getStatement());
             preg_match($regexExpectedStatement, $statement->getStatement(), $matches);
 
             $parameters = [];

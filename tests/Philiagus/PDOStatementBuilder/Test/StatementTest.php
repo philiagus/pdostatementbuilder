@@ -14,9 +14,11 @@ namespace Philiagus\PDOStatementBuilder\Test;
 use Philiagus\PDOStatementBuilder\Parameter;
 use Philiagus\PDOStatementBuilder\Statement;
 use PHPUnit\Framework\TestCase;
+use Prophecy\PhpUnit\ProphecyTrait;
 
 class StatementTest extends TestCase
 {
+    use ProphecyTrait;
 
     public function testSymmetry(): void
     {
