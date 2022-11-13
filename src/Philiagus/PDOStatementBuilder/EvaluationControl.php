@@ -14,33 +14,18 @@ namespace Philiagus\PDOStatementBuilder;
 
 class EvaluationControl
 {
-    /**
-     * @var callable
-     */
-    private $goto;
-    /**
-     * @var callable
-     */
-    private $injectValue;
-    /**
-     * @var callable
-     */
-    private $injectIn;
-    /**
-     * @var callable
-     */
-    private $continue;
-    /**
-     * @var callable
-     */
-    private $injectRaw;
+    private \Closure $goto;
+    private \Closure $injectValue;
+    private \Closure $injectIn;
+    private \Closure $continue;
+    private \Closure $injectRaw;
 
     public function __construct(
-        callable $goto,
-        callable $continue,
-        callable $injectValue,
-        callable $injectIn,
-        callable $injectRaw
+        \Closure $goto,
+        \Closure $continue,
+        \Closure $injectValue,
+        \Closure $injectIn,
+        \Closure $injectRaw
     )
     {
         $this->goto = $goto;

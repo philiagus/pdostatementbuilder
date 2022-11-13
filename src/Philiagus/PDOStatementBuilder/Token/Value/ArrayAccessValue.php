@@ -16,16 +16,8 @@ use Philiagus\PDOStatementBuilder\BuilderValue;
 
 class ArrayAccessValue extends AbstractBuilderValue
 {
-
-    /**
-     * @var BuilderValue
-     */
-    private $source;
-
-    /**
-     * @var mixed
-     */
-    private $offset;
+    private BuilderValue $source;
+    private mixed $offset;
 
     public function __construct(BuilderValue $source, $offset)
     {

@@ -14,47 +14,31 @@ namespace Philiagus\PDOStatementBuilder\Token;
 
 use Philiagus\PDOStatementBuilder\BuilderValue;
 use Philiagus\PDOStatementBuilder\EvaluationControl;
+use Philiagus\PDOStatementBuilder\Token\Value\ForeachInfoValue;
 use Philiagus\PDOStatementBuilder\Token\Value\WritableValue;
 
 class ForeachToken extends AbstractToken
 {
 
-    /**
-     * @var null|string
-     */
-    private $endforeach = null;
+    private ?string $endforeach = null;
 
-    /**
-     * @var mixed
-     */
-    private $iterable;
+    private mixed $iterable;
+    private WritableValue $value;
+    private WritableValue $key;
+    private ForeachInfoValue $info;
+    private int $dataPointer = 0;
+    private int $dataPointerCount = 0;
 
-    /**
-     * @var WritableValue
-     */
-    private $value;
+    /** @var array{0: mixed, 1: mixed} */
+    private array $dataAsArray = [];
 
-    /**
-     * @var WritableValue
-     */
-    private $key;
-
-    /**
-     * @var array
-     */
-    private $dataAsArray = [];
-
-    /**
-     * @var int
-     */
-    private $dataPointer = 0;
-
-    /**
-     * @var int
-     */
-    private $dataPointerMax = 0;
-
-    public function __construct($iterable, &$value, &$key)
+    public function __construct(
+        $iterable,
+        &$value,
+        &$key,
+        &$info,
+        private ?\Closure $closure
+    )
     {
         parent::__construct('foreach');
         $this->iterable = $iterable;
@@ -64,6 +48,10 @@ class ForeachToken extends AbstractToken
         if (!($key instanceof WritableValue)) {
             $key = new WritableValue();
         }
+        if(!($info instanceof ForeachInfoValue)) {
+            $info = new ForeachInfoValue();
+        }
+        $this->info = $info;
         $this->value = $value;
         $this->key = $key;
     }
@@ -79,14 +67,19 @@ class ForeachToken extends AbstractToken
             } else {
                 $value = $this->iterable;
             }
+
+            if($this->closure !== null) {
+                $value = ($this->closure)($value);
+            }
+
             if (!is_iterable($value)) {
                 throw new \LogicException('The argument provided to foreach must be iterable');
             }
             foreach ($value as $k => $v) {
                 $this->dataAsArray[] = [$k, $v];
             }
-            $this->dataPointerMax = count($this->dataAsArray);
-            if ($this->dataPointerMax === 0) {
+            $this->dataPointerCount = count($this->dataAsArray);
+            if ($this->dataPointerCount === 0) {
                 // empty foreach -> move to endforeach
                 $builderInteraction->goto($this->endforeach)->continue();
 
@@ -99,10 +92,10 @@ class ForeachToken extends AbstractToken
         }
 
         // we are at the endforeach token
-        if ($this->dataPointer >= $this->dataPointerMax) {
+        if ($this->dataPointer >= $this->dataPointerCount) {
             // each element has been iterated, reset data for memory usage
             $this->dataAsArray = [];
-            $this->dataPointerMax = 0;
+            $this->dataPointerCount = 0;
             $this->dataPointer = 0;
             $builderInteraction->continue();
 
@@ -119,6 +112,7 @@ class ForeachToken extends AbstractToken
         [$key, $value] = $this->dataAsArray[$this->dataPointer];
         $this->key->setPDOStatementBuilderValue($key);
         $this->value->setPDOStatementBuilderValue($value);
+        $this->info->setPDOStatementBuilderValue($this->dataPointer, $this->dataPointerCount);
         $this->dataPointer++;
     }
 

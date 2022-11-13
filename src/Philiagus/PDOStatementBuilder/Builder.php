@@ -11,18 +11,18 @@ declare(strict_types=1);
 
 namespace Philiagus\PDOStatementBuilder;
 
+use Closure;
 use Philiagus\PDOStatementBuilder\Token\AbstractToken;
 use Philiagus\PDOStatementBuilder\Token\ForeachToken;
 use Philiagus\PDOStatementBuilder\Token\IfToken;
 use Philiagus\PDOStatementBuilder\Token\InToken;
 use Philiagus\PDOStatementBuilder\Token\RawToken;
+use Philiagus\PDOStatementBuilder\Token\Value\ForeachInfoValue;
 use Philiagus\PDOStatementBuilder\Token\ValueToken;
 
 class Builder
 {
     public const TOKEN_REGEX = '\0\0\0\d+_[0-9a-f]+_\d+_[0-9a-z]+\0\0\0';
-
-    private const PARAMETER_CONSTRUCT = ":pUp";
 
     /**
      * @var string|null
@@ -52,7 +52,7 @@ class Builder
     }
 
     /**
-     * A simple way of constructing a statement that doesn't needs specific tokens
+     * A simple way of constructing a statement that doesn't need specific tokens
      * The statement should contain the statement as it would be provided to the prepare
      * method of a \PDO object. The parameters are an array with the key being the name of the parameter in
      * the query.
@@ -60,8 +60,9 @@ class Builder
      * An example statement would be: "SELECT * FROM `table` WHERE id = :id" with the parameters
      * [":id" => 123]
      *
+     *
      * @param string $statement
-     * @param mixed[] $parameters
+     * @param array $parameters
      *
      * @return Statement
      */
@@ -124,19 +125,13 @@ class Builder
      */
     protected static function detectType($value): int
     {
-        switch (gettype($value)) {
-            case 'string':
-            case 'double':
-                return \PDO::PARAM_STR;
-            case 'integer':
-                return \PDO::PARAM_INT;
-            case 'NULL':
-                return \PDO::PARAM_NULL;
-            case 'boolean':
-                return \PDO::PARAM_BOOL;
-            default:
-                throw new \InvalidArgumentException('Type of provided ' . gettype($value) . ' argument could not be inferred');
-        }
+        return match (gettype($value)) {
+            'string', 'double' => \PDO::PARAM_STR,
+            'integer' => \PDO::PARAM_INT,
+            'NULL' => \PDO::PARAM_NULL,
+            'boolean' => \PDO::PARAM_BOOL,
+            default => throw new \InvalidArgumentException('Type of provided ' . gettype($value) . ' argument could not be inferred'),
+        };
     }
 
     /**
@@ -177,14 +172,13 @@ class Builder
                 array_merge(array_slice($tokens, 1), [null])
             );
 
-            $interaction = null;
             $interaction = new EvaluationControl(
             // goto
-                function ($target) use (&$currentToken) {
+                static function ($target) use (&$currentToken) {
                     $currentToken = $target;
                 },
                 // continue
-                function () use (
+                static function () use (
                     $statement,
                     &$generatedStatement,
                     &$currentToken,
@@ -203,7 +197,7 @@ class Builder
                     $generatedStatement .= $this->executeIn($data, $type, $emptyFallback, $generatedParameters);
                 },
                 //raw
-                function (string $raw) use (&$generatedStatement) {
+                static function (string $raw) use (&$generatedStatement) {
                     $generatedStatement .= $raw;
                 }
             );
@@ -220,9 +214,21 @@ class Builder
         }
     }
 
+    /**
+     * @param $value
+     * @param int|null $type
+     * @param array $generatedParameters
+     *
+     * @return string
+     */
     private function executeValue($value, ?int $type, array &$generatedParameters): string
     {
-        $name = str_replace('U', $this->getUnique(), self::PARAMETER_CONSTRUCT);
+
+        if ($this->unique === null) {
+            $this->unique = spl_object_id($this) . '_' . bin2hex(pack('E', microtime(true)));
+        }
+
+        $name = ':p' . $this->unique . '_' . $this->uniqueIndex++ . 'p';
 
         $value = static::transformValue($value, $type);
 
@@ -237,20 +243,6 @@ class Builder
         $generatedParameters[$name] = new Parameter($name, $value, $type);
 
         return $name;
-    }
-
-    /**
-     * Returns a unique identifier
-     *
-     * @return string
-     */
-    private function getUnique(): string
-    {
-        if ($this->unique === null) {
-            $this->unique = spl_object_id($this) . '_' . bin2hex(pack('E', microtime(true)));
-        }
-
-        return $this->unique . '_' . $this->uniqueIndex++;
     }
 
     /**
@@ -309,63 +301,105 @@ class Builder
     }
 
     /**
-     * @param $emptyFallback
+     * Will return a statement to be used for an empty in.
+     *
+     * The $emptyFallback is the value provided as parameter of the same name when
+     * calling the in method
+     *
+     * @param mixed $emptyFallback
      *
      * @return Statement
+     * @see static::in()
      */
-    protected static function buildEmptyIn($emptyFallback): Statement
+    protected static function buildEmptyIn(mixed $emptyFallback): Statement
     {
         if (is_int($emptyFallback)) {
-            $emptyFallback = '0' . str_repeat(',0', $emptyFallback - 1) . '';
+            $emptyFallback = '0' . str_repeat(',0', $emptyFallback - 1);
         }
 
         if (is_string($emptyFallback)) {
             return new Statement("SELECT $emptyFallback FROM (SELECT 0 FROM dual) `noResultSubSelect` WHERE 0");
         }
 
-        throw new \InvalidArgumentException(
-            'Empty fallback for in statement is not valid'
-        );
+        throw new \InvalidArgumentException('Empty fallback for in statement is not valid');
     }
 
     /**
-     * @param $value
+     * Adds the provided value as a bound parameter to the generated statement.
+     *
+     * If the provided $value is an object implementing the PDOStatementBuilderParameter interface
+     * that method is used to convert the value before binding it
+     * as a parameter.
+     *
+     * $closure expects a \Closure with the signature function(mixed $value, ?int &$type = null): mixed
+     * If a $closure is provided, the $value and the $type (after PDOStatementBuilderParameter conversion)
+     * are provided to that $closure
+     * The return of the function will be used as $value. $type can be altered by reference
+     *
+     * If $type is null after all of that, the $type is inferred using the method detectType(mixed $value): int
+     *
+     * @param mixed $value
      * @param int|null $type
+     * @param Closure|null $closure
      *
      * @return string
+     * @see PDOStatementBuilderParameter
      */
-    final public function value($value, ?int $type = null): string
+    final public function value(mixed $value, ?int $type = null, ?\Closure $closure = null): string
     {
-        $token = new ValueToken($value, $type);
+        $token = new ValueToken($value, $type, $closure);
         $this->tokens[$token->getId()] = $token;
 
         return $token->getId();
     }
 
     /**
-     * Injects the value as string into the resulting statement string
-     * This is most times used in context of foreach values
+     * Injects the value as string into the resulting statement string, without escaping or binding the value in
+     * any form. This can be used for dynamic parts of a statement.
      *
-     * @param $value
+     * @param mixed $value
+     * Any value, but preferably something that can be converted to a string (possibly after using $closure)
+     * as it will be string-concat into the resulting statement
+     *
+     * @param Closure|null $closure
+     * The signature of $closure should be function(mixed $value): string
+     * If given, $closure is provided with the provided $value and the return value of the $closure is used
+     * in the statement string
      *
      * @return string
      */
-    final public function raw($value): string
+    final public function raw(mixed $value, ?\Closure $closure = null): string
     {
-        $token = new RawToken($value);
+        $token = new RawToken($value, $closure);
         $this->tokens[$token->getId()] = $token;
 
         return $token->getId();
     }
 
     /**
-     * @param $data
+     * Builds an in statement part from the provided data. For a typical SQL statement, this would be written
+     * between the brackets, such as `column in ({$builder->in($array)})`
+     *
+     * Arrays of any depth are supported, so that result statement fragments such as "(1,2,3),(2,3,4)" are possible
+     * For an array resulting in that type of binding, $emptyFallback should be configured to 3 (as one element of
+     * the result contains 3 sub-elements).
+     * If a more complex variant of empty fallback is needed, please extend the builder and overwrite the buildEmptyIn
+     * method to your needs
+     *
+     * The individual values to be bound will be provided to the value method, providing the given type
+     *
+     * @param mixed $data
+     * Can be an array of data, a BuilderValue providing an array of data or a Statement-object build the a Builder
+     * to be inserted at the target location
+     *
      * @param int|null $type
      * @param mixed|Statement $emptyFallback
      *
      * @return string
+     * @see static::buildEmptyIn()
+     * @see static::value()
      */
-    final public function in($data, ?int $type = null, $emptyFallback = 1): string
+    final public function in(mixed $data, ?int $type = null, mixed $emptyFallback = 1): string
     {
         $token = new InToken($data, $type, $emptyFallback);
         $this->tokens[$token->getId()] = $token;
@@ -374,17 +408,24 @@ class Builder
     }
 
     /**
-     * Starts an if block. Conversion is provided with the $truthy value, which is needed
-     * when using conditional if in context of foreach keys and values
+     * Starts an if block. All the content of the if block up to the next corresponding elseif, else or endif
+     * are only used in the statement, if the $truthy value is true.
      *
-     * @param $truthy
-     * @param callable|null $conversion
+     * This behaves exactly like a php if-structure behaves.
+     *
+     * $closure should have the signature function(mixed $truthy): mixed and can be used to alter the $truthy value
+     * before evaluation. This is needed when the value provided is a BuilderValue, such as written by reference
+     * when using foreach($source, $value)
+     *
+     * @param mixed $truthy
+     * @param Closure|null $closure
      *
      * @return string
+     * @see PDOStatementBuilderParameter
      */
-    final public function if($truthy, ?callable $conversion = null): string
+    final public function if(mixed $truthy, ?\Closure $closure = null): string
     {
-        $token = new IfToken($truthy, $conversion);
+        $token = new IfToken($truthy, $closure);
         $this->tokens[$token->getId()] = $token;
         $this->stackPush($token);
 
@@ -415,21 +456,22 @@ class Builder
 
     /**
      * Branches from an if into an elseif
+     * The parameters behave exactly like the if
      *
-     * @param $truthy
-     *
-     * @param callable|null $conversion
+     * @param mixed $truthy
+     * @param Closure|null $closure
      *
      * @return string
+     * @see self::if()
      */
-    final public function elseif($truthy, ?callable $conversion = null): string
+    final public function elseif(mixed $truthy, ?\Closure $closure = null): string
     {
         $token = $this->getCurrentToken(
             IfToken::class,
             'Trying to create elseif outside if structure'
         );
 
-        $id = $token->elseif($truthy, $conversion);
+        $id = $token->elseif($truthy, $closure);
         $this->tokens[$id] = $token;
 
         return $id;
@@ -481,8 +523,7 @@ class Builder
     }
 
     /**
-     * Defines the and of an if, elseif or else, closing the entire if structure
-     * it belongs to
+     * Defines the and of an if, elseif or else, closing the entire if structure it belongs to
      *
      * @return string
      */
@@ -501,30 +542,66 @@ class Builder
     }
 
     /**
+     * Uses the value as iterable and loops through the data
+     *
+     * Pretend that foreach($array, $value, $key) is identical to foreach($array as $key => $value)
+     *
+     * $value, $key and $info will each be set by reference to an object that is later loaded with the information when
+     * looping through the values of $source.
+     *
+     *
+     * @param iterable|BuilderValue $source
+     * The value to iterate over. If this value is not an array its values will be extracted and internally stored
+     * as an array before starting the loop.
+     *
+     * @param mixed $value
+     * Variable will be overwritten on time of call with a WritableValue object that will transport the current value
+     * of the foreach to the desired location in the statement.
+     * The same variable can later be used in the same statement for another foreach or in any context, but please be
+     * aware that this will behave exactly like using the same variable name in to normal foreach calls in PHP
+     *
+     * @param mixed $key
+     * Behaves just as the $value, but is given the key of the looped
+     *
+     * @param mixed $info
+     * Will be changed to an object of type `ForeachInfoValue` that provides
+     * `$info->first` - can be used with if($info->first) to identify the first loop iteration
+     * `$info->last` - can be used with if($info->last) to identify the last loop iteration
+     * `$info->index` - provides the index of the current iteration, starting to count at 0
+     * `$info->count` - provides the total number of elements the foreach will loop over
+     * The object provided by $info cannot be used as a statement value itself. You cannot use it in
+     * foreach, if, elseif, raw or value. Only its fields are available
+     *
+     * @param Closure|null $closure
+     * Should have the signature function(mixed $source): iterable
+     * If given: Will be provided the source and its return value will be used for the foreach
+     * Can be used when providing a carry value from another builder function (such as another foreach)
+     * and wanting to alter that value before iteration
+     *
+     * @return string
+     * @see ForeachInfoValue
+     */
+    final public function foreach(
+        mixed     $source,
+        mixed     &$value,
+        mixed     &$key = null,
+        mixed     &$info = null,
+        ?\Closure $closure = null
+    ): string
+    {
+        $token = new ForeachToken($source, $value, $key, $info, $closure);
+        $this->tokens[$token->getId()] = $token;
+        $this->stackPush($token);
+
+        return $token->getId();
+    }
+
+    /**
      * Pops an element from the token stack
      */
     private function stackPop(): void
     {
         $this->getTokenStack()->pop();
-    }
-
-    /**
-     * Uses the value as iterable and loops through the data
-     * $keyIdentifier and $valueIdentifier will be loaded with tokens that can be used in() and value()
-     *
-     * @param $value
-     * @param $keyIdentifier
-     * @param $valueIdentifier
-     *
-     * @return string
-     */
-    final public function foreach($value, &$valueIdentifier, &$keyIdentifier = null): string
-    {
-        $token = new ForeachToken($value, $valueIdentifier, $keyIdentifier);
-        $this->tokens[$token->getId()] = $token;
-        $this->stackPush($token);
-
-        return $token->getId();
     }
 
     /**

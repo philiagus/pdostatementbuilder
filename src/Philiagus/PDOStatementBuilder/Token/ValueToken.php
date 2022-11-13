@@ -17,21 +17,14 @@ use Philiagus\PDOStatementBuilder\EvaluationControl;
 
 class ValueToken extends AbstractToken
 {
-    /**
-     * @var mixed
-     */
-    private $value;
 
-    /**
-     * @var int|null
-     */
-    private $type;
-
-    public function __construct($value, ?int $type)
+    public function __construct(
+        private mixed $value,
+        private ?int $type,
+        private ?\Closure $closure
+    )
     {
         parent::__construct('value');
-        $this->value = $value;
-        $this->type = $type;
     }
 
     public function execute(string $token, EvaluationControl $builderInteraction): void
@@ -41,8 +34,14 @@ class ValueToken extends AbstractToken
         } else {
             $value = $this->value;
         }
+
+        $type = $this->type;
+        if($this->closure !== null) {
+            $value = ($this->closure)($value, $type);
+        }
+
         $builderInteraction
-            ->injectValue($value, $this->type)
+            ->injectValue($value, $type)
             ->continue();
     }
 }

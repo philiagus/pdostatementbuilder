@@ -15,9 +15,8 @@ namespace Philiagus\PDOStatementBuilder\Token\Value;
 class WritableValue extends AbstractBuilderValue
 {
 
-    private $value = null;
-
-    private $valueSet = false;
+    private mixed $value = null;
+    private bool $valueSet = false;
 
     public function __construct()
     {

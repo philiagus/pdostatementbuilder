@@ -16,15 +16,9 @@ use Philiagus\PDOStatementBuilder\EvaluationControl;
 
 abstract class AbstractToken
 {
-
-    /**
-     * @var
-     */
-    private $id;
-
-    private $uniqueCounter = 0;
-
-    private $uniqueId = null;
+    private string $id;
+    private int $uniqueCounter = 0;
+    private string $uniqueId;
 
     /**
      * AbstractToken constructor.

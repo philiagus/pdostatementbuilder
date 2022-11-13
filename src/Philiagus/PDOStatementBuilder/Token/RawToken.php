@@ -17,15 +17,12 @@ use Philiagus\PDOStatementBuilder\EvaluationControl;
 
 class RawToken extends AbstractToken
 {
-    /**
-     * @var mixed
-     */
-    private $value;
-
-    public function __construct($value)
+    public function __construct(
+        private mixed $value,
+        private ?\Closure $closure = null
+    )
     {
         parent::__construct('value');
-        $this->value = $value;
     }
 
     public function execute(string $token, EvaluationControl $builderInteraction): void
@@ -35,6 +32,11 @@ class RawToken extends AbstractToken
         } else {
             $value = $this->value;
         }
+
+        if($this->closure !== null) {
+            $value = ($this->closure)($value);
+        }
+
         $builderInteraction
             ->injectRaw((string) $value)
             ->continue();

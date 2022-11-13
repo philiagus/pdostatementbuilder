@@ -35,12 +35,12 @@ class IfToken extends AbstractToken
 
     private $hasExecuted = false;
 
-    public function __construct($truthy, ?callable $conversion)
+    public function __construct($truthy, ?\Closure $closure)
     {
         parent::__construct('if');
         $this->idToTruthy[$this->getId()] = [
             $truthy,
-            $conversion
+            $closure
         ];
     }
 
@@ -56,14 +56,14 @@ class IfToken extends AbstractToken
             return;
         }
 
-        foreach ($this->idToTruthy as $id => [$truthy, $conversion]) {
+        foreach ($this->idToTruthy as $id => [$truthy, $closure]) {
             if($truthy instanceof BuilderValue) {
                 $truthyValue = $truthy->resolveAsPDOStatementBuilderValue();
             } else {
                 $truthyValue = $truthy;
             }
-            if($conversion !== null) {
-                $truthyValue = $conversion($truthyValue);
+            if($closure !== null) {
+                $truthyValue = $closure($truthyValue);
             }
             if ($truthyValue) {
                 $this->hasExecuted = true;
@@ -76,13 +76,13 @@ class IfToken extends AbstractToken
         $builderInteraction->goto($this->endif)->continue();
     }
 
-    public function elseif($truthy, ?callable $conversion): string
+    public function elseif($truthy, ?\Closure $closure): string
     {
         if ($this->else !== null) {
             throw new \LogicException('Trying to define elseif for if which already has an else defined, expected endif');
         }
         $id = $this->uniqueId('elseif');
-        $this->idToTruthy[$id] = [$truthy, $conversion];
+        $this->idToTruthy[$id] = [$truthy, $closure];
 
         return $id;
     }

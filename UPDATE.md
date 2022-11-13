@@ -1,5 +1,42 @@
 # UPDATE
 
+## v1.2.0 - v1.3.0
+
+Fixed errors in README.md, still referencing PHP <8.0.
+
+### BC Breaks
+
+- Parameter names have been changed, leading to BC breaks if named parameters are used. This is most likely going to break for uses of `foreach`, so please check your code.
+- `$conversion` (no simply named `$closure`) no longer accepts callables and instead expects `\Closure` objects
+
+### Changes by method
+
+- `foreach(mixed $source, mixed &$value, mixed &$key = null, mixed &$info = null, ?\Closure $closure = null): string`:
+  - renamed `$value` to `$source`
+  - renamed `$valueIdentifier` to `$value`
+  - renamed `$keyIdentifier` to `$key`
+  - added `$info`
+    - will be changed by reference to an object of class `\Philiagus\PDOStatementBuilder\Token\Value\ForeachInfoValue`
+    - provides multiple properties to be used in the builders methods
+      - `$info->first` - true if this is the first iteration
+      - `$info->last` - true if this is the last iteration
+      - `$info->count` - count of values to be looped over
+      - `$info->index` - current loop index, starting at 0
+  - added `$closure`
+    - used with signature `function(mixed $source): iterable` to change `$source` before attempting iteration
+- `if(mixed $truthy, ?\Closure $closure = null): string`
+  - renamed `$conversion` to `$closure`
+- `elseif(mixed $truthy, ?\Closure $closure = null): string`
+    - renamed `$conversion` to `$closure`
+- `raw(mixed $value, ?\Closure $closure = null): string`
+  - added `$closure`
+    - used with signature `function(mixed $value): string` to change `$value` before adding it to the statement string
+- `value(mixed $value, ?int $type = null, ?\Closure $closure = null): string`
+  - added `$closure`
+    - used with signature `function(mixed $value, ?int &$type = null): string` to change `$value` before binding it as parameter. `$type` can be set by reference and is expected to be a `PDO::PARAM_*` constant.
+
+
+
 ## v1.1.0 - v1.2.0
 
 **WARNING**: Support for PHP < 8.0 has been dropped

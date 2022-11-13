@@ -16,15 +16,8 @@ use Philiagus\PDOStatementBuilder\BuilderValue;
 
 class InvokeValue extends AbstractBuilderValue
 {
-
-    /**
-     * @var BuilderValue
-     */
-    private $value;
-    /**
-     * @var array
-     */
-    private $arguments;
+    private BuilderValue $value;
+    private array $arguments;
 
     public function __construct(BuilderValue $value, array $arguments)
     {
