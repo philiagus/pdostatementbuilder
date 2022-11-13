@@ -36,7 +36,7 @@ class ForeachStatementAllTokenTypesTest extends SuccessUnit
             "a " .
             $builder->foreach($array, $v1) .
             $builder->foreach($array, $v2, $k2) .
-            $builder->raw($v2[0]()->method($v1[0]()->method('argument'))) .
+            $builder->raw($v2[0]()->method($v1[0]()->method((object)['a' => 'argument'])->a)) .
             $builder->endforeach() .
             "{$builder->endforeach()} b"
         );

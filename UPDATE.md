@@ -9,7 +9,11 @@ Fixed errors in README.md, still referencing PHP <8.0.
 - Parameter names have been changed, leading to BC breaks if named parameters are used. This is most likely going to break for uses of `foreach`, so please check your code.
 - `$conversion` (no simply named `$closure`) no longer accepts callables and instead expects `\Closure` objects
 
-### Changes by method
+### Changes to behaviour
+
+- The `$value` provided by `foreach` now also supports `$value->property` resolution
+
+### Changes to methods
 
 - `foreach(mixed $source, mixed &$value, mixed &$key = null, mixed &$info = null, ?\Closure $closure = null): string`:
   - renamed `$value` to `$source`

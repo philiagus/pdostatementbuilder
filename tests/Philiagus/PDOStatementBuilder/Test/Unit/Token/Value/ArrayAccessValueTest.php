@@ -25,7 +25,7 @@ class ArrayAccessValueTest extends TestCase
         return [
             'fixed' => [1],
             'generated' => [new class() implements BuilderValue {
-                public function resolveAsPDOStatementBuilderValue()
+                public function resolveAsPDOStatementBuilderValue(): mixed
                 {
                     return 1;
                 }
@@ -42,7 +42,7 @@ class ArrayAccessValueTest extends TestCase
     {
         $value = new ArrayAccessValue(
             new class() implements BuilderValue {
-                public function resolveAsPDOStatementBuilderValue()
+                public function resolveAsPDOStatementBuilderValue(): mixed
                 {
                     return ['a', 'b', 'c'];
                 }

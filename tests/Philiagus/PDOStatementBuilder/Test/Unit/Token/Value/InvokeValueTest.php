@@ -23,7 +23,7 @@ class InvokeValueTest extends TestCase
     public function provideOffset(): array
     {
         $generated = new class() implements BuilderValue {
-            public function resolveAsPDOStatementBuilderValue()
+            public function resolveAsPDOStatementBuilderValue(): mixed
             {
                 return 1;
             }
@@ -70,7 +70,7 @@ class InvokeValueTest extends TestCase
                 $this->object = $object;
             }
 
-            public function resolveAsPDOStatementBuilderValue()
+            public function resolveAsPDOStatementBuilderValue(): mixed
             {
                 return $this->object;
             }

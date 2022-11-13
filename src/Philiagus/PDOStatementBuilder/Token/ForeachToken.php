@@ -21,7 +21,6 @@ class ForeachToken extends AbstractToken
 {
 
     private ?string $endforeach = null;
-
     private mixed $iterable;
     private WritableValue $value;
     private WritableValue $key;

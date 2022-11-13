@@ -22,7 +22,7 @@ class WritableValue extends AbstractBuilderValue
     {
     }
 
-    public function resolveAsPDOStatementBuilderValue()
+    public function resolveAsPDOStatementBuilderValue(): mixed
     {
         if (!$this->valueSet) {
             throw new \LogicException(

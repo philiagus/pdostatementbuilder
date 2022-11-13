@@ -11,18 +11,8 @@ declare(strict_types=1);
 
 namespace Philiagus\PDOStatementBuilder;
 
-
 class Statement
 {
-    /**
-     * @var string
-     */
-    private $statement;
-
-    /**
-     * @var Parameter|Parameter[]
-     */
-    private $parameters;
 
     /**
      * Statement constructor.
@@ -30,15 +20,16 @@ class Statement
      * @param string $statement
      * @param Parameter[] $parameters
      */
-    public function __construct(string $statement, array $parameters = [])
+    public function __construct(
+        private string $statement,
+        private array $parameters = []
+    )
     {
         foreach ($parameters as $parameter) {
             if (!$parameter instanceof Parameter) {
                 throw new \InvalidArgumentException('Parameters must be provided as array of ' . Parameter::class);
             }
         }
-        $this->statement = $statement;
-        $this->parameters = $parameters;
     }
 
     /**
@@ -50,9 +41,9 @@ class Statement
     }
 
     /**
-     * @return Parameter|Parameter[]
+     * @return Parameter[]
      */
-    public function getParameters()
+    public function getParameters(): array
     {
         return $this->parameters;
     }
@@ -60,7 +51,7 @@ class Statement
     /**
      * @param \PDO $pdo
      *
-     * @return \PDOStatement|null
+     * @return \PDOStatement
      * @throws \Exception
      */
     public function prepare(\PDO $pdo): \PDOStatement

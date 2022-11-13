@@ -18,22 +18,11 @@ use Philiagus\PDOStatementBuilder\EvaluationControl;
 class IfToken extends AbstractToken
 {
 
-    /**
-     * @var array<string,mixed[]>
-     */
-    private $idToTruthy = [];
-
-    /**
-     * @var null|string
-     */
-    private $else = null;
-
-    /**
-     * @var null|string
-     */
-    private $endif = null;
-
-    private $hasExecuted = false;
+    /** @var array<string,array> */
+    private array $idToTruthy = [];
+    private ?string $else = null;
+    private ?string $endif = null;
+    private bool $hasExecuted = false;
 
     public function __construct($truthy, ?\Closure $closure)
     {

@@ -15,6 +15,10 @@ namespace Philiagus\PDOStatementBuilder;
 interface BuilderValue
 {
 
-    public function resolveAsPDOStatementBuilderValue();
+    /**
+     * Called to resolve the BuilderValue before trying to use it in the context of a builder function
+     * @return mixed
+     */
+    public function resolveAsPDOStatementBuilderValue(): mixed;
 
 }

@@ -20,7 +20,7 @@ use Philiagus\PDOStatementBuilder\BuilderValue;
  * @property-read bool $last
  * @property-read int $index
  */
-class ForeachInfoValue
+class ForeachInfoValue implements BuilderValue
 {
 
     private WritableValue $indexValue;
@@ -61,4 +61,13 @@ class ForeachInfoValue
         };
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function resolveAsPDOStatementBuilderValue(): mixed
+    {
+        throw new \LogicException(
+            'The $info value of $builder->foreach cannot be used as a parameter. Please us the public properties instead'
+        );
+    }
 }

@@ -15,36 +15,18 @@ final class Parameter
 {
 
     /**
-     * @var int
-     */
-    private $type;
-
-    /**
-     * @var string
-     */
-    private $name;
-
-    /**
-     * @var mixed
-     */
-    private $value;
-
-    /**
      * Parameter constructor.
      *
      * @param string $name
-     * @param string $value
+     * @param mixed $value
      * @param int $type
      */
     public function __construct(
-        string $name,
-        $value,
-        int $type
+        private string $name,
+        private mixed $value,
+        private int $type
     )
     {
-        $this->name = $name;
-        $this->value = $value;
-        $this->type = $type;
     }
 
     /**
@@ -66,7 +48,7 @@ final class Parameter
     /**
      * @return mixed
      */
-    public function getValue()
+    public function getValue(): mixed
     {
         return $this->value;
     }

@@ -25,7 +25,7 @@ class ArrayAccessValue extends AbstractBuilderValue
         $this->offset = $offset;
     }
 
-    public function resolveAsPDOStatementBuilderValue()
+    public function resolveAsPDOStatementBuilderValue(): mixed
     {
         if ($this->offset instanceof BuilderValue) {
             $offset = $this->offset->resolveAsPDOStatementBuilderValue();

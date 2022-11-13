@@ -24,25 +24,11 @@ class Builder
 {
     public const TOKEN_REGEX = '\0\0\0\d+_[0-9a-f]+_\d+_[0-9a-z]+\0\0\0';
 
-    /**
-     * @var string|null
-     */
-    private $unique = null;
-
-    /**
-     * @var int
-     */
-    private $uniqueIndex = 0;
-
-    /**
-     * @var AbstractToken[]
-     */
-    private $tokens = [];
-
-    /**
-     * @var \SplStack|null
-     */
-    private $tokenStack = null;
+    private ?string $unique = null;
+    private int $uniqueIndex = 0;
+    /** @var AbstractToken[] */
+    private array $tokens = [];
+    private ?\SplStack $tokenStack = null;
 
     /**
      * Make sure that no child class will ever take any arguments for construction
@@ -105,7 +91,7 @@ class Builder
      *
      * @return mixed
      */
-    protected static function transformValue($value, ?int &$type)
+    protected static function transformValue(mixed $value, ?int &$type): mixed
     {
         if ($value instanceof PDOStatementBuilderParameter) {
             return $value->toPDOStatementValue($type);
@@ -389,7 +375,7 @@ class Builder
      * The individual values to be bound will be provided to the value method, providing the given type
      *
      * @param mixed $data
-     * Can be an array of data, a BuilderValue providing an array of data or a Statement-object build the a Builder
+     * Can be an array of data, a BuilderValue providing an array of data or a Statement-object build by a Builder
      * to be inserted at the target location
      *
      * @param int|null $type

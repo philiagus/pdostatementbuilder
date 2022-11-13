@@ -22,7 +22,7 @@ class AbstractBuilderValueTest extends TestCase
     private function instance(): AbstractBuilderValue
     {
         return new class extends AbstractBuilderValue{
-            public function resolveAsPDOStatementBuilderValue()
+            public function resolveAsPDOStatementBuilderValue(): mixed
             {
                 return 'ok';
             }
@@ -33,7 +33,6 @@ class AbstractBuilderValueTest extends TestCase
     {
         self::expectException(\LogicException::class);
         self::expectExceptionMessage('offset exists cannot be called on BuilderValues');
-        /** @noinspection PhpExpressionResultUnusedInspection */
         isset($this->instance()['ay']);
     }
 

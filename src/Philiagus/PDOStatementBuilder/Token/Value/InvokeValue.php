@@ -16,16 +16,15 @@ use Philiagus\PDOStatementBuilder\BuilderValue;
 
 class InvokeValue extends AbstractBuilderValue
 {
-    private BuilderValue $value;
-    private array $arguments;
 
-    public function __construct(BuilderValue $value, array $arguments)
+    public function __construct(
+        private BuilderValue $value,
+        private array $arguments
+    )
     {
-        $this->value = $value;
-        $this->arguments = $arguments;
     }
 
-    public function resolveAsPDOStatementBuilderValue()
+    public function resolveAsPDOStatementBuilderValue(): mixed
     {
         $arguments = [];
         foreach ($this->arguments as $key => $argument) {

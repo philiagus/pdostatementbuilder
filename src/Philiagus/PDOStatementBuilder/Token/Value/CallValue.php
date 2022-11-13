@@ -16,9 +16,6 @@ use Philiagus\PDOStatementBuilder\BuilderValue;
 
 class CallValue extends AbstractBuilderValue
 {
-    private BuilderValue $sourceValue;
-    private string $methodName;
-    private array $arguments;
 
     /**
      * CallValue constructor.
@@ -27,17 +24,18 @@ class CallValue extends AbstractBuilderValue
      * @param string $methodName
      * @param array $arguments
      */
-    public function __construct(BuilderValue $sourceValue, string $methodName, array $arguments = [])
+    public function __construct(
+        private BuilderValue $sourceValue,
+        private string $methodName,
+        private array $arguments = []
+    )
     {
-        $this->sourceValue = $sourceValue;
-        $this->methodName = $methodName;
-        $this->arguments = $arguments;
     }
 
     /**
      * @inheritDoc
      */
-    public function resolveAsPDOStatementBuilderValue()
+    public function resolveAsPDOStatementBuilderValue(): mixed
     {
         $arguments = [];
         $methodName = $this->methodName;

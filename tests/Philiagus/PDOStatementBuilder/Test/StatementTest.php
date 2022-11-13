@@ -34,10 +34,8 @@ class StatementTest extends TestCase
     public function testParameterAssertion(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        new Statement(
-            'STRING',
-            ['a']
-        );
+        /** @noinspection PhpParamsInspection */
+        new Statement('STRING', ['a']);
     }
 
     public function testPrepare(): void

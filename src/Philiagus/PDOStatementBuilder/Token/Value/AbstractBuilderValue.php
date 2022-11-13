@@ -47,4 +47,9 @@ abstract class AbstractBuilderValue implements BuilderValue, ArrayAccess
     {
         return new InvokeValue($this, $arguments);
     }
+
+    public function __get(string $name): GetValue
+    {
+        return new GetValue($this, $name);
+    }
 }

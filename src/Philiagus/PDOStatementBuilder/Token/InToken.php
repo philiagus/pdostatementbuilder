@@ -18,20 +18,13 @@ use Philiagus\PDOStatementBuilder\EvaluationControl;
 class InToken extends AbstractToken
 {
 
-    private $data;
-    /**
-     * @var int|null
-     */
-    private $type;
-    private $emptyFallback;
-
-    public function __construct($data, ?int $type, $emptyFallback)
+    public function __construct(
+        private mixed $data,
+        private ?int $type,
+        private mixed $emptyFallback
+    )
     {
         parent::__construct('in');
-
-        $this->data = $data;
-        $this->type = $type;
-        $this->emptyFallback = $emptyFallback;
     }
 
     public function execute(string $token, EvaluationControl $builderInteraction): void

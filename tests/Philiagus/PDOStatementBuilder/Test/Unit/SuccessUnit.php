@@ -28,6 +28,7 @@ abstract class SuccessUnit extends TestCase
 
     public function provideCases(): array
     {
+        $cases = [];
         $furtherCases = $this->subCases();
         if (empty($furtherCases)) {
             $cases["default"] = [[]];
@@ -112,7 +113,7 @@ abstract class SuccessUnit extends TestCase
             $found = [];
             $reflection = new \ReflectionClass(\PDO::class);
             foreach ($reflection->getConstants() as $name => $value) {
-                if (preg_match('/^PARAM_/', $name)) {
+                if (str_starts_with($name, 'PARAM_')) {
                     $found[substr($name, strlen('PARAM_'))] = $value;
                 }
             }
