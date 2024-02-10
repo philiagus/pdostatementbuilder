@@ -1,0 +1,12 @@
+# Exclusions from artifact
+/docker                 export-ignore
+/tests                  export-ignore
+/.editorconfig          export-ignore
+/.gitattributes         export-ignore
+/.gitignore             export-ignore
+/.phpstorm.meta.php     export-ignore
+/docker-compose.yml     export-ignore
+/phpunit.xml            export-ignore
+
+# Files
+*.php   text eof=lf diff=php

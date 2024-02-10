@@ -1,8 +1,8 @@
 <?php
-/**
+/*
  * This file is part of philiagus/pdostatementbuilder
  *
- * (c) Andreas Bittner <philiagus@philiagus.de>
+ * (c) Andreas Eicher <philiagus@philiagus.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -20,7 +20,7 @@ class SimpleIfElseInsideIfElseTest extends SuccessUnit
 {
     private $expected = null;
 
-    public function subCases(): array
+    public static function subCases(): array
     {
         $cases = [];
         foreach (DataProvider::any() as $ifName => $ifValue) {
@@ -30,7 +30,11 @@ class SimpleIfElseInsideIfElseTest extends SuccessUnit
                         $ifValue,
                         $if2Value,
                         $if3Name,
-                        ($ifValue ? '1.1' . ($if2Value ? '2.1' : '2.2') : '1.2' . ($if3Value ? '3.1' : '3.2')),
+                        (
+                            $ifValue ?
+                                '1.1' . ($if2Value ? '2.1' : '2.2') :
+                                '1.2' . ($if3Value ? '3.1' : '3.2')
+                        ),
                     ];
                 }
             }

@@ -1,6 +1,8 @@
 # philiagus/pdostatementbuilder
 PHP classes to easily build PDO statements.
 
+For all update information please refer to [UPDATE.md](./UPDATE.md).
+
 ## What is it?
 
 A simple way of building complex PDOStatements in a readable way. Want to build an overly complex filter SQL for your project? This is the project to use!
@@ -10,6 +12,8 @@ A simple way of building complex PDOStatements in a readable way. Want to build 
 - Tested in
     - PHP8.0
     - PHP8.1
+    - PHP8.2
+    - PHP8.3
 
 ## Why do all this?
 

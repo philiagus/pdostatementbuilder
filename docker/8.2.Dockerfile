@@ -1,6 +1,4 @@
-FROM php:8.0-cli
-
-ENV COMPOSER_ALLOW_SUPERUSER=1
+FROM php:8.2-cli
 
 RUN apt-get update
 
@@ -10,8 +8,6 @@ RUN pecl install xdebug \
 RUN apt-get install -y git zip unzip
 
 WORKDIR /app
-
-COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 COPY ./ /app
 

@@ -2,7 +2,7 @@
 /*
  * This file is part of philiagus/pdostatementbuilder
  *
- * (c) Andreas Bittner <philiagus@philiagus.de>
+ * (c) Andreas Eicher <philiagus@philiagus.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 class CallValueTest extends TestCase
 {
 
-    public function provideOffset(): array
+    public static function provideOffset(): array
     {
         $generated = new class() implements BuilderValue {
             public function resolveAsPDOStatementBuilderValue(): mixed

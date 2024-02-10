@@ -1,5 +1,12 @@
 # UPDATE
 
+## v1.3.0 - v1.4.0
+
+- Dropped support for PHP8.0
+- Tested on PHP8.1, PHP8.2 and PHP8.3
+- Reduced size of build artifact
+- Updated copyright to name change
+
 ## v1.2.0 - v1.3.0
 
 Fixed errors in README.md, still referencing PHP <8.0.

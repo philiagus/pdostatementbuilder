@@ -1,8 +1,8 @@
 <?php
-/**
+/*
  * This file is part of philiagus/pdostatementbuilder
  *
- * (c) Andreas Bittner <philiagus@philiagus.de>
+ * (c) Andreas Eicher <philiagus@philiagus.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -19,7 +19,7 @@ class TurboFoldingCaseTest extends SuccessUnit
 {
     private $expected = null;
 
-    public function subCases(): array
+    public static function subCases(): array
     {
         $cases = [];
         foreach ([true, false] as $ifValue) {

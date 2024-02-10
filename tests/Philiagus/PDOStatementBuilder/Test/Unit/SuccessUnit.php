@@ -1,8 +1,8 @@
 <?php
-/**
+/*
  * This file is part of philiagus/pdostatementbuilder
  *
- * (c) Andreas Bittner <philiagus@philiagus.de>
+ * (c) Andreas Eicher <philiagus@philiagus.de>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -21,15 +21,15 @@ abstract class SuccessUnit extends TestCase
 {
     use ProphecyTrait;
 
-    public function subCases(): array
+    public static function subCases(): array
     {
         return [];
     }
 
-    public function provideCases(): array
+    public static function provideCases(): array
     {
         $cases = [];
-        $furtherCases = $this->subCases();
+        $furtherCases = static::subCases();
         if (empty($furtherCases)) {
             $cases["default"] = [[]];
         } else {

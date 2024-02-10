@@ -1,4 +1,4 @@
-FROM php:8.1-cli
+FROM php:8.3-cli
 
 RUN apt-get update
 
@@ -12,3 +12,7 @@ WORKDIR /app
 COPY ./ /app
 
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+ENV COMPOSER_ALLOW_SUPERUSER=1
