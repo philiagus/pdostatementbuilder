@@ -7,7 +7,7 @@
   ~ For the full copyright and license information, please view the LICENSE
   ~ file that was distributed with this source code.
   -->
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd" colors="true" bootstrap="tests/bootstrap.php" cacheResult="false" cacheDirectory=".phpunit.cache">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd" colors="true" bootstrap="tests/bootstrap.php" cacheResult="false">
   <testsuites>
     <testsuite name="PDOStatementBuilder Suite">
       <directory>tests</directory>
