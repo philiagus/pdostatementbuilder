@@ -93,7 +93,7 @@ class SomeRepository
 
 The code does essentially the same, but the SQL is readable. Additionally, an IDE such as PHPStorm can help you with auto-completion of the SQL.
 
-### Dimple Statement building
+### Simple Statement building
 
 The Builder also supports a static method to simply build Statements.
 
