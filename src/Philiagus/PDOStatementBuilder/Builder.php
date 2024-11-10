@@ -41,7 +41,9 @@ class Builder
      * A simple way of constructing a statement that doesn't need specific tokens
      * The statement should contain the statement as it would be provided to the prepare
      * method of a \PDO object. The parameters are an array with the key being the name of the parameter in
-     * the query.
+     * the query (for named parameters such as ":id"), or simply an integer key for index-bound parameters
+     * ("?" parameter binding in PDO Statements). The array can also contain Parameter-objects directly
+     * for maximum control of the parameter and binding type. These types can be mixed as needed.
      *
      * An example statement would be: "SELECT * FROM `table` WHERE id = :id" with the parameters
      * [":id" => 123]
@@ -51,6 +53,7 @@ class Builder
      * @param array $parameters
      *
      * @return Statement
+     * @see Parameter
      */
     public static function simple(string $statement, array $parameters = []): Statement
     {
@@ -60,6 +63,10 @@ class Builder
 
         $statementParameters = [];
         foreach ($parameters as $name => $value) {
+            if($value instanceof Parameter) {
+                $statementParameters[] = $value;
+                continue;
+            }
             $type = null;
             $value = static::transformValue($value, $type);
 

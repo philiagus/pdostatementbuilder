@@ -92,3 +92,36 @@ class SomeRepository
 ```
 
 The code does essentially the same, but the SQL is readable. Additionally, an IDE such as PHPStorm can help you with auto-completion of the SQL.
+
+### Dimple Statement building
+
+The Builder also supports a static method to simply build Statements.
+
+```php
+class SomeRepository
+{
+    /**
+     * @type \PDO
+     */
+    private $pdo;
+
+    function getSomething(array $ids, bool $someFilter = false, ?int $exclude = null): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $builder = new \Philiagus\PDOStatementBuilder\Builder();
+        $sql = Builder::simple(
+            "SELECT * FROM `table` WHERE `id` = :id",
+            [':id' => 1]
+        );
+
+        $statement = $sql->prepare($this->pdo);
+        $statement->execute();
+        return $statement->fetchAll(\PDO::FETCH_ASSOC);
+    }
+}
+```
+
+The `Builder::simple` method does not only take named parameters (`:id`), but also numeric parameters (for binding with `?` in PDO). You can also simply provide an `Parameter` object (`new Parameter(<name>, <value>, <type>)`) if you want in-place control of the parameter type.

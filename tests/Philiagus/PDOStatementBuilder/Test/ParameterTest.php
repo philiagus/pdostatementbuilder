@@ -26,4 +26,12 @@ class ParameterTest extends TestCase
         self::assertSame(1, $instance->getType());
     }
 
+    public function testSymmetryInteger(): void
+    {
+        $instance = new Parameter(3, INF, 1);
+        self::assertSame(3, $instance->getName());
+        self::assertInfinite($instance->getValue());
+        self::assertSame(1, $instance->getType());
+    }
+
 }

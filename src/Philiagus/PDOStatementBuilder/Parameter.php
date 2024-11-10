@@ -17,12 +17,12 @@ final class Parameter
     /**
      * Parameter constructor.
      *
-     * @param string $name
+     * @param string|int $name
      * @param mixed $value
      * @param int $type
      */
     public function __construct(
-        private string $name,
+        private string|int $name,
         private mixed $value,
         private int $type
     )
@@ -38,9 +38,9 @@ final class Parameter
     }
 
     /**
-     * @return string
+     * @return string|int
      */
-    public function getName(): string
+    public function getName(): string|int
     {
         return $this->name;
     }

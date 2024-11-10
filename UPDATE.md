@@ -1,5 +1,35 @@
 # UPDATE
 
+## v1.4.0 - v1.5.0
+
+- Added support for numeric parameter binding (only used in `Builder::simple`). So far one had to write:
+  ```php
+  Builder::simple(
+    "SELECT * FROM `table` WHERE id = :id",
+    [':id' => 1]                  
+  )
+  ```
+  now possible:
+  ```php
+  Builder::simple(
+    "SELECT * FROM `table` WHERE id = ?",
+    [1]                  
+  )
+  ```
+  This binding can be mixed, so using numeric and named keys in the same statement is possible. Please be aware that this increases the chance for collision when using these statements in `->in` calls.
+- Allowed to directly use `Parameter` objects for `Builder::simple` for easier type-specific binding.
+  ```php
+  Builder::simple(
+    "UPDATE `table` SET `blob_colunn` = :value WHERE id = :id",
+    [
+        ':id' => 1,
+        // providing full parameter circumvents auto-detection of parameter type
+        // normally the type would be detected as string, but now it is treated as LOB
+        new Parameter(':value', '<very long data>', \PDO::PARAM_LOB),
+    ]
+  )
+  ```
+
 ## v1.3.0 - v1.4.0
 
 - Dropped support for PHP8.0

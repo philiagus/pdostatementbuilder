@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Philiagus\PDOStatementBuilder\Test;
 
 use Philiagus\PDOStatementBuilder\Builder;
+use Philiagus\PDOStatementBuilder\Parameter;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -55,6 +56,35 @@ class BuilderTest extends TestCase
         $builder::simple('', [
             ':something' => 1
         ]);
+    }
+
+    public function testSimpleVariants(): void
+    {
+        $statement = Builder::simple(
+            '',
+            [
+                null,
+                new Parameter(1, 'value', \PDO::PARAM_LOB),
+                ':something' => 3
+            ]
+        );
+
+        self::assertSame('', $statement->getStatement());
+        $parameters = $statement->getParameters();
+        self::assertCount(3, $parameters);
+        self::assertSame([0, 1, 2], array_keys($parameters));
+        [$p1, $p2, $p3] = $parameters;
+        self::assertSame(0, $p1->getName());
+        self::assertSame(null, $p1->getValue());
+        self::assertSame(\PDO::PARAM_NULL, $p1->getType());
+
+        self::assertSame(1, $p2->getName());
+        self::assertSame('value', $p2->getValue());
+        self::assertSame(\PDO::PARAM_LOB, $p2->getType());
+
+        self::assertSame(':something', $p3->getName());
+        self::assertSame(3, $p3->getValue());
+        self::assertSame(\PDO::PARAM_INT, $p3->getType());
     }
 
 }
