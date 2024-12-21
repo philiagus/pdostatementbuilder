@@ -23,7 +23,7 @@
         "issues": "https://github.com/philiagus/pdostatementbuilder/issues"
     },
     "require-dev": {
-        "phpunit/phpunit": "*",
+        "phpunit/phpunit": "^10.5.10",
         "ext-xdebug": "*",
         "phpspec/prophecy-phpunit": "^2.0",
         "ext-json": "*"

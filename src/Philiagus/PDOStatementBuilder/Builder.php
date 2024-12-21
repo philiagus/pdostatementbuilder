@@ -480,8 +480,8 @@ class Builder
      * @return AbstractToken
      */
     private function getCurrentToken(
-        string $expectedType = null,
-        string $exceptionMessage = null
+        ?string $expectedType = null,
+        ?string $exceptionMessage = null
     ): AbstractToken
     {
         $stack = $this->getTokenStack();

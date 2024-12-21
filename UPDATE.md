@@ -1,5 +1,12 @@
 # UPDATE
 
+## v1.4.0 - v1.4.1
+
+- Minor fix release, removing some deprecation warnings under PHP8.4
+- Running Unittests under PHP8.4
+- Upgrade PHPUnit
+- Fixed minor README.md errors
+
 ## v1.4.0 - v1.5.0
 
 - Added support for numeric parameter binding (only used in `Builder::simple`). So far one had to write:

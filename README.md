@@ -10,10 +10,10 @@ A simple way of building complex PDOStatements in a readable way. Want to build 
 ## Is it covered?
 - 100% Test covered
 - Tested in
-    - PHP8.0
     - PHP8.1
     - PHP8.2
     - PHP8.3
+    - PHP8.4
 
 ## Why do all this?
 
