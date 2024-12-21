@@ -1,6 +1,6 @@
 # UPDATE
 
-## v1.4.0 - v1.4.1
+## v1.5.0 - v1.5.1
 
 - Minor fix release, removing some deprecation warnings under PHP8.4
 - Running Unittests under PHP8.4
