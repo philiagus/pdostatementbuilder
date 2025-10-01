@@ -19,8 +19,8 @@ use Philiagus\PDOStatementBuilder\Token\Value\WritableValue;
 
 class ForeachToken extends AbstractToken
 {
-
     private ?string $endforeach = null;
+    private ?string $separator = null;
     private mixed $iterable;
     private WritableValue $value;
     private WritableValue $key;
@@ -36,7 +36,7 @@ class ForeachToken extends AbstractToken
         &$value,
         &$key,
         &$info,
-        private ?\Closure $closure
+        private ?\Closure $closure,
     )
     {
         parent::__construct('foreach');
@@ -47,7 +47,7 @@ class ForeachToken extends AbstractToken
         if (!($key instanceof WritableValue)) {
             $key = new WritableValue();
         }
-        if(!($info instanceof ForeachInfoValue)) {
+        if (!($info instanceof ForeachInfoValue)) {
             $info = new ForeachInfoValue();
         }
         $this->info = $info;
@@ -67,7 +67,7 @@ class ForeachToken extends AbstractToken
                 $value = $this->iterable;
             }
 
-            if($this->closure !== null) {
+            if ($this->closure !== null) {
                 $value = ($this->closure)($value);
             }
 
@@ -101,6 +101,11 @@ class ForeachToken extends AbstractToken
             return;
         }
 
+        // add separator if we've already processed at least one item
+        if ($this->separator !== null && $this->dataPointer > 0) {
+            $builderInteraction->injectRaw($this->separator);
+        }
+
         // activate next value and move back to loop head
         $this->nextValue();
         $builderInteraction->goto($this->getId())->continue();
@@ -122,8 +127,9 @@ class ForeachToken extends AbstractToken
         }
     }
 
-    public function end(): string
+    public function end(?string $seperator = null): string
     {
+        $this->separator = $seperator;
         $this->endforeach = $this->uniqueId('endforeach');
 
         return $this->endforeach;
