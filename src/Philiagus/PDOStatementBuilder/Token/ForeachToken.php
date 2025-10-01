@@ -21,6 +21,8 @@ class ForeachToken extends AbstractToken
 {
 
     private ?string $endforeach = null;
+
+    private string $separator = '';
     private mixed $iterable;
     private WritableValue $value;
     private WritableValue $key;
@@ -101,6 +103,10 @@ class ForeachToken extends AbstractToken
             return;
         }
 
+        if($this->separator && $this->dataPointer > 0) {
+            $builderInteraction->injectRaw($this->separator);
+        }
+
         // activate next value and move back to loop head
         $this->nextValue();
         $builderInteraction->goto($this->getId())->continue();
@@ -122,8 +128,9 @@ class ForeachToken extends AbstractToken
         }
     }
 
-    public function end(): string
+    public function end(string $separator): string
     {
+        $this->separator = $separator;
         $this->endforeach = $this->uniqueId('endforeach');
 
         return $this->endforeach;

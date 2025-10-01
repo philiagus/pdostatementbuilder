@@ -1,5 +1,9 @@
 # UPDATE
 
+## v1.5.1 - 1.6.0
+
+- Added optional parameter `$separator` to `endforeach`, which takes a string and inserts it between each iteration as raw output. Essentially, it serves like the separator of the implode function.
+
 ## v1.5.0 - v1.5.1
 
 - Minor fix release, removing some deprecation warnings under PHP8.4

@@ -600,16 +600,19 @@ class Builder
     /**
      * Ends a foreach bracket
      *
+     * @param string $separator
+     *
      * @return string
      */
-    final public function endforeach(): string
+    final public function endforeach(string $separator = ''): string
     {
+        /** @var ForeachToken $foreach */
         $foreach = $this->getCurrentToken(
             ForeachToken::class,
             'Trying to create endforeach outside foreach'
         );
 
-        $id = $foreach->end();
+        $id = $foreach->end($separator);
         $this->tokens[$id] = $foreach;
         $this->stackPop();
 
